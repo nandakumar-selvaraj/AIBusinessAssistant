@@ -1,0 +1,52 @@
+<nav class="sidebar" [class.collapsed]="collapsed()" aria-label="Main menu">
+  <ul class="menu-list">
+    @for (item of mainMenu; track item.path) {
+      <li>
+        <a
+          class="side-link"
+          [routerLink]="item.path"
+          routerLinkActive="active"
+          [attr.title]="collapsed() ? item.label : null"
+          [attr.aria-label]="item.label"
+        >
+          <i class="bi" [class]="item.icon"></i>
+          @if (!collapsed()) {
+            <span>{{ item.label }}</span>
+          }
+        </a>
+      </li>
+    }
+  </ul>
+
+  <hr class="my-2" />
+
+  <ul class="menu-list">
+    @for (item of secondaryMenu; track item.path) {
+      <li>
+        <a
+          class="side-link"
+          [routerLink]="item.path"
+          routerLinkActive="active"
+          [attr.title]="collapsed() ? item.label : null"
+          [attr.aria-label]="item.label"
+        >
+          <i class="bi" [class]="item.icon"></i>
+          @if (!collapsed()) {
+            <span>{{ item.label }}</span>
+          }
+        </a>
+      </li>
+    }
+  </ul>
+</nav>
+
+<button
+  type="button"
+  class="edge-toggle"
+  [attr.aria-label]="collapsed() ? 'Expand menu' : 'Collapse menu'"
+  [attr.aria-expanded]="!collapsed()"
+  [attr.title]="collapsed() ? 'Expand menu' : 'Collapse menu'"
+  (click)="toggle()"
+>
+  <i class="bi" [class]="collapsed() ? 'bi-chevron-right' : 'bi-chevron-left'"></i>
+</button>

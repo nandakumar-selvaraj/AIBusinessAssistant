@@ -1,0 +1,45 @@
+// Import all of Bootstrap's source SCSS files
+@use "bootstrap/scss/bootstrap";
+
+@use 'bootstrap-icons/font/bootstrap-icons';
+
+:root {
+  --bai-navy: #172554;
+  --bai-active-bg: #dbeafe;
+  --bai-active-fg: #1d4ed8;
+  --bai-border: #e2e8f0;
+  --bai-muted: #64748b;
+  --bai-text: #0f172a;
+  --bs-body-font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+  --bs-body-color: var(--bai-text);
+}
+
+body {
+  background: #f8fafc;
+}
+
+.bai-card {
+  background: #fff;
+  border: 1px solid var(--bai-border);
+  border-radius: 0.5rem;
+}
+
+.text-purple {
+  color: #7c3aed !important;
+}
+
+.text-customers {
+  color: #2F6FED !important;
+}
+
+.text-orders {
+  color: #2DB89B !important;
+}
+
+.text-revenue {
+  color: #8A3FFC !important;
+}
+
+.text-pending {
+  color: #E67E22 !important;
+}

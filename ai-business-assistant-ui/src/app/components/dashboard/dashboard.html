@@ -1,0 +1,46 @@
+<div class="row g-3">
+
+    <div class="mb-4">
+        <h2 class="fw-bold fs-3 text-dark mb-1">Business Dashboard</h2>
+        <p class="text-secondary fs-6 mb-0">Manage your business with AI-powered insights.</p>
+    </div>
+    <div class="col-12 col-sm-6 col-lg-3">
+        <app-stat-card icon="bi-people" value=123 label="Total Customers" color="text-customers"
+            secondaryLabel="Registered customers">
+        </app-stat-card>
+    </div>
+
+    <div class="col-12 col-sm-6 col-lg-3">
+        <app-stat-card icon="bi-bag" value=456 label="Total Orders" color="text-orders"
+            secondaryLabel="All recorded orders">
+        </app-stat-card>
+    </div>
+
+    <div class="col-12 col-sm-6 col-lg-3">
+        <app-stat-card icon="bi-currency-rupee" value=789 label="Revenue" color="text-revenue"
+            secondaryLabel="Illustrative total">
+        </app-stat-card>
+    </div>
+
+    <div class="col-12 col-sm-6 col-lg-3">
+        <app-stat-card icon="bi-clock" value=1011 label="Pending Orders" color="text-pending"
+            secondaryLabel="Awaiting processing">
+        </app-stat-card>
+    </div>
+</div>
+
+<div class="p-0">
+    <div class="row g-0 mt-4">
+        <div class="col-12 col-sm-12 col-lg-12">
+            <app-ai-assistant-card></app-ai-assistant-card>
+        </div>
+    </div>
+</div>
+
+<div class="p-0">
+    <div class="row g-0 mt-4">
+        <div class="col-12 col-sm-12 col-lg-12">
+            <app-recent-orders-card></app-recent-orders-card>
+        </div>
+    </div>
+</div>

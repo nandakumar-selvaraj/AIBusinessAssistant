@@ -1,0 +1,140 @@
+$header-bg: #ffffff;       // change to #172554 for the navy header (and set text/icon colours to white)
+$primary: #4680ff;
+$hover-bg: #eef3ff;
+$border: #e6ebf1;
+
+:host {
+  display: block;
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+}
+
+.app-header {
+  height: 64px;
+  width: 100%;
+  background: $header-bg;
+  border-bottom: 1px solid $border;
+}
+
+.brand {
+  color: #172554;
+  font-weight: 600;
+  font-size: 1.15rem;
+
+  &:focus-visible {
+    outline: 2px solid $primary;
+    outline-offset: 4px;
+    border-radius: 0.25rem;
+  }
+}
+
+.brand-icon {
+  color: $primary;
+  flex-shrink: 0;
+}
+
+.icon-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: #3f4d67;
+  transition: background-color 0.15s;
+
+  &:hover,
+  &[aria-expanded='true'] {
+    background: $hover-bg;
+    color: $primary;
+  }
+
+  &:focus-visible {
+    outline: 2px solid $primary;
+    outline-offset: 2px;
+  }
+}
+
+.icon-btn-sm {
+  width: 28px;
+  height: 28px;
+}
+
+.badge-dot {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff4d4f;
+  border: 2px solid $header-bg;
+  box-sizing: content-box;
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #dbe7ff;
+  color: $primary;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.avatar-sm {
+  width: 36px;
+  height: 36px;
+  font-size: 0.75rem;
+}
+
+.header-panel {
+  width: 360px;
+  max-width: calc(100vw - 1.5rem);
+  margin-top: 0.5rem;
+  border: 1px solid $border;
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  overflow: hidden;
+}
+
+.header-panel-profile {
+  width: 270px;
+}
+
+.panel-scroll {
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.notice + .notice {
+  border-top: 1px solid #f1f4f8;
+}
+
+.notice:hover {
+  background: #f8fafc;
+}
+
+.panel-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  color: #1f2a40;
+  text-decoration: none;
+
+  &:hover {
+    background: $hover-bg;
+    color: $primary;
+  }
+}

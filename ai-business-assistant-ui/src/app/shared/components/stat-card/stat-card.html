@@ -1,0 +1,8 @@
+<div class="card shadow-sm rounded-3 h-100">
+    <div class="card-body py-3">
+        <i [class]="'bi ' + icon() + ' ' + color() + ' fw-bold fs-5'"></i>
+        <div [class]="color() + ' small mt-1 fs-6'">{{ label()??'' }}</div>
+        <div class="fs-5 fw-bold lh-1 mt-2">{{ value()??'0' }}</div>
+        <div class="text-secondary small mt-1 fs-6">{{ secondaryLabel()??'' }}</div>
+    </div>
+</div>

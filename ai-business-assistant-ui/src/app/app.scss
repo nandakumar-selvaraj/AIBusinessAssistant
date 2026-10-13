@@ -1,0 +1,13 @@
+/* Fixed Footer Styling */
+        .fixed-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #ffffff;
+            border-top: 1px solid #e2e8f0;
+            padding: 0.75rem 1rem;
+            z-index: 1030;
+            font-size: 0.875rem;
+            color: #64748b;
+        }

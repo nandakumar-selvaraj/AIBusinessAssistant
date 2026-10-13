@@ -1,0 +1,65 @@
+.ai-card {
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.01);
+    background-color: #ffffff;
+    width: 100%;
+}
+
+.bot-icon-wrapper {
+    color: #6366f1;
+    font-size: 1.25rem;
+    display: inline-flex;
+    align-items: center;
+    margin-right: 0.5rem;
+}
+
+.suggestions-box {
+    background-color: #f1f5f9;
+    border-radius: 0.75rem;
+    border: none;
+}
+
+.chat-input {
+    border-radius: 9999px;
+    border: 1px solid #cbd5e1;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.95rem;
+    color: #64748b;
+    box-shadow: none !important;
+}
+
+.chat-input:focus {
+    border-color: #94a3b8;
+}
+
+.plan-btn {
+    background-color: #0f172a;
+    color: #ffffff;
+    border-radius: 9999px;
+    padding: 0.5rem 1.25rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+    border: none;
+    transition: background-color 0.2s;
+}
+
+.plan-btn:hover {
+    background-color: #1e293b;
+    color: #ffffff;
+}
+
+ul.custom-bullets {
+    list-style-type: disc;
+    padding-left: 1.25rem;
+    margin-bottom: 0;
+}
+
+ul.custom-bullets li {
+    color: #475569;
+    margin-bottom: 0.25rem;
+}
+
+ul.custom-bullets li:last-child {
+    margin-bottom: 0;
+}
