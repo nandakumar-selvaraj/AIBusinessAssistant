@@ -6,34 +6,26 @@
     </div>
     <div class="col-12 col-sm-6 col-lg-3">
         <app-stat-card icon="bi-people" value=123 label="Total Customers" color="text-customers"
-            secondaryLabel="Registered customers">
+            secondaryLabel="Registered customers" percentage=4.9>
         </app-stat-card>
     </div>
 
     <div class="col-12 col-sm-6 col-lg-3">
         <app-stat-card icon="bi-bag" value=456 label="Total Orders" color="text-orders"
-            secondaryLabel="All recorded orders">
+            secondaryLabel="All recorded orders" percentage=2.3>
         </app-stat-card>
     </div>
 
     <div class="col-12 col-sm-6 col-lg-3">
         <app-stat-card icon="bi-currency-rupee" value=789 label="Revenue" color="text-revenue"
-            secondaryLabel="Illustrative total">
+            secondaryLabel="Illustrative total" percentage=5.1>
         </app-stat-card>
     </div>
 
     <div class="col-12 col-sm-6 col-lg-3">
         <app-stat-card icon="bi-clock" value=1011 label="Pending Orders" color="text-pending"
-            secondaryLabel="Awaiting processing">
+            secondaryLabel="Awaiting processing" percentage=3.2>
         </app-stat-card>
-    </div>
-</div>
-
-<div class="p-0">
-    <div class="row g-0 mt-4">
-        <div class="col-12 col-sm-12 col-lg-12">
-            <app-ai-assistant-card></app-ai-assistant-card>
-        </div>
     </div>
 </div>
 
@@ -41,6 +33,14 @@
     <div class="row g-0 mt-4">
         <div class="col-12 col-sm-12 col-lg-12">
             <app-recent-orders-card></app-recent-orders-card>
+        </div>
+    </div>
+</div>
+
+<div class="p-0">
+    <div class="row g-0 mt-4">
+        <div class="col-12 col-sm-12 col-lg-12">
+            <app-ai-insights class="d-block" [insights]="insights"></app-ai-insights>
         </div>
     </div>
 </div>
