@@ -48,14 +48,7 @@ namespace AiBusinessAssistant.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] UpsertProductDto dto)
         {
-            try
-            {
-                await _productService.UpdateAsync(id, dto);
-            }
-            catch (KeyNotFoundException)
-            {
-                return NotFound();
-            }
+            await _productService.UpdateAsync(id, dto);
             return NoContent();
         }
 

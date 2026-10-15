@@ -1,0 +1,29 @@
+<section class="page-heading mb-4">
+  <div><p class="eyebrow mb-1">RELATIONSHIPS</p><h1 class="h3 fw-bold mb-1">Customers</h1><p class="text-secondary mb-0">Manage your customer directory and contact details.</p></div>
+</section>
+
+<div class="row g-4 align-items-start">
+  <div class="col-12" [class.col-xl-8]="true">
+    <section class="bai-card list-card">
+      <div class="list-toolbar"><div><h2 class="h6 fw-bold mb-1">All customers</h2><span class="small text-secondary">{{ rows().length }} total</span></div><label class="search-box"><i class="bi bi-search"></i><input class="form-control" type="search" placeholder="Search customers" [value]="query()" (input)="query.set($any($event.target).value)" /></label></div>
+      @if (error() && !loading()) { <div class="alert alert-danger m-3" role="alert">{{ error() }}</div> }
+      @if (loading()) { <div class="empty-state"><span class="spinner-border spinner-border-sm text-primary"></span><span>Loading customers…</span></div> }
+      @else if (filtered.length === 0) { <div class="empty-state"><i class="bi bi-people"></i><strong>{{ query() ? 'No matching customers' : 'No customers yet' }}</strong><span>{{ query() ? 'Try a different search.' : 'Add a customer to start building your directory.' }}</span></div> }
+      @else {
+        <div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Customer</th><th>Contact</th><th>Address</th><th class="text-end">Actions</th></tr></thead><tbody>
+          @for (row of filtered; track row.customerId) { <tr><td><div class="customer-name"><span class="avatar">{{ row.name.charAt(0).toUpperCase() }}</span><span class="fw-semibold">{{ row.name }}</span></div></td><td><span>{{ row.email || '—' }}</span><small class="d-block text-secondary">{{ row.phone || '' }}</small></td><td class="text-secondary">{{ row.address || '—' }}</td><td class="text-end text-nowrap"><button class="btn btn-sm btn-light me-1" type="button" aria-label="Edit customer" (click)="edit(row)"><i class="bi bi-pencil"></i></button><button class="btn btn-sm btn-light text-danger" type="button" aria-label="Delete customer" (click)="pendingDelete.set(row)"><i class="bi bi-trash3"></i></button></td></tr> }
+        </tbody></table></div>
+      }
+    </section>
+  </div>
+  <div class="col-12 col-xl-4"><section class="bai-card form-card"><div class="form-heading"><span class="form-icon"><i class="bi" [class.bi-person-plus]="editingId() === null" [class.bi-pencil-square]="editingId() !== null"></i></span><div><h2 class="h6 fw-bold mb-1">{{ editingId() === null ? 'New customer' : 'Edit customer' }}</h2><p class="small text-secondary mb-0">{{ editingId() === null ? 'Enter the customer details below.' : 'Update this customer’s information.' }}</p></div></div>
+    <form (ngSubmit)="save()"><label class="form-label" for="customer-name">Name <span class="text-danger">*</span></label><input id="customer-name" class="form-control mb-3" name="name" [(ngModel)]="form.name" required maxlength="120" placeholder="Customer name" />
+      <label class="form-label" for="customer-email">Email</label><input id="customer-email" class="form-control mb-3" name="email" [(ngModel)]="form.email" type="email" maxlength="200" placeholder="name@company.com" />
+      <label class="form-label" for="customer-phone">Phone</label><input id="customer-phone" class="form-control mb-3" name="phone" [(ngModel)]="form.phone" maxlength="40" placeholder="Phone number" />
+      <label class="form-label" for="customer-address">Address</label><textarea id="customer-address" class="form-control mb-3" name="address" [(ngModel)]="form.address" rows="3" maxlength="500" placeholder="Street, city, postal code"></textarea>
+      @if (error()) { <div class="alert alert-danger py-2 small" role="alert">{{ error() }}</div> }
+      <div class="d-flex gap-2"><button class="btn btn-primary flex-grow-1" type="submit" [disabled]="saving() || !form.name.trim()"><span [class.spinner-border]="saving()" [class.spinner-border-sm]="saving()" class="me-2"></span>{{ saving() ? 'Saving…' : (editingId() === null ? 'Create customer' : 'Save changes') }}</button><button class="btn btn-light" type="button" (click)="startCreate()">Clear</button></div>
+    </form>
+  </section></div>
+</div>
+<app-confirm-modal [open]="pendingDelete() !== null" title="Delete customer?" [message]="'Delete ' + (pendingDelete()?.name ?? 'this customer') + '? This action cannot be undone.'" (closed)="pendingDelete.set(null)" (confirmed)="confirmDelete()" />

@@ -1,5 +1,6 @@
 ﻿using AiBusinessAssistant.Data;
 using AiBusinessAssistant.Entities;
+using AiBusinessAssistant.Common.Exceptions;
 using AiBusinessAssistant.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -40,10 +41,20 @@ namespace AiBusinessAssistant.Repositories.Implementations
         public async Task DeleteAsync(int id)
         {
             var product = await _context.Products.FindAsync(id);
-            if (product != null)
+            if (product is null)
+                throw new ApiNotFoundException($"Product {id} was not found.");
+
+            if (await _context.OrderItems.AnyAsync(item => item.ProductId == id))
+                throw new ApiConflictException("This product is referenced by order items and cannot be deleted. Deactivate it to preserve order history.");
+
+            _context.Products.Remove(product);
+            try
             {
-                _context.Products.Remove(product);
                 await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+                throw new ApiConflictException("This product is referenced by an order item and cannot be deleted.");
             }
         }
     }

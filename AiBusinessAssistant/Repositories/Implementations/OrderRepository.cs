@@ -1,5 +1,6 @@
 ﻿using AiBusinessAssistant.Data;
 using AiBusinessAssistant.Entities;
+using AiBusinessAssistant.Common.Exceptions;
 using AiBusinessAssistant.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -30,24 +31,61 @@ namespace AiBusinessAssistant.Repositories.Implementations
 
         public async Task<Order> AddAsync(Order order)
         {
-            order.CreatedAt = DateTime.UtcNow;
-            order.OrderDate = DateTime.UtcNow;
+            await using var transaction = await _context.Database.BeginTransactionAsync();
 
-            // Apply price snapshot rule: grab current UnitPrice from Product
-            foreach (var item in order.OrderItems)
+            var customer = await _context.Customers.FirstOrDefaultAsync(c => c.CustomerId == order.CustomerId);
+            if (customer is null)
+                throw new ApiNotFoundException($"Customer {order.CustomerId} was not found.");
+
+            var productIds = order.OrderItems.Select(item => item.ProductId).Distinct().ToArray();
+            var products = await _context.Products.Where(product => productIds.Contains(product.ProductId)).ToDictionaryAsync(product => product.ProductId);
+            var missingProductId = productIds.FirstOrDefault(productId => !products.ContainsKey(productId));
+            if (missingProductId != 0)
+                throw new ApiNotFoundException($"Product {missingProductId} was not found.");
+
+            if (products.Values.Any(product => !product.IsActive))
+                throw new ApiConflictException("Inactive products cannot be added to an order.");
+
+            var requestedQuantities = order.OrderItems
+                .GroupBy(item => item.ProductId)
+                .ToDictionary(group => group.Key, group => group.Sum(item => (long)item.Quantity));
+
+            foreach (var (productId, requestedQuantity) in requestedQuantities)
             {
-                var product = await _context.Products.FindAsync(item.ProductId);
-                if (product != null)
-                {
-                    item.UnitPrice = product.UnitPrice; // Snapshot
-                }
+                var product = products[productId];
+                if (requestedQuantity > product.StockQuantity)
+                    throw new ApiConflictException($"Insufficient stock for '{product.Name}'. Requested {requestedQuantity}, available {product.StockQuantity}.");
             }
 
-            // Calculate total amount dynamically
-            order.TotalAmount = order.OrderItems.Sum(oi => oi.Quantity * oi.UnitPrice);
+            if (await _context.Orders.AnyAsync(existing => existing.OrderNumber == order.OrderNumber))
+                throw new ApiConflictException($"Order number '{order.OrderNumber}' already exists.");
 
+            var now = DateTime.UtcNow;
+            order.CreatedAt = now;
+            order.OrderDate = now;
+            order.Customer = customer;
+            foreach (var item in order.OrderItems)
+            {
+                if (item.ProductId <= 0 || item.Quantity <= 0)
+                    throw new ApiValidationException("Every order item must have a valid product and a quantity greater than zero.");
+                item.Product = products[item.ProductId];
+                item.UnitPrice = item.Product.UnitPrice;
+            }
+
+            foreach (var (productId, requestedQuantity) in requestedQuantities)
+                products[productId].StockQuantity -= (int)requestedQuantity;
+
+            try
+            {
+                order.TotalAmount = order.OrderItems.Sum(item => checked(item.Quantity * item.UnitPrice));
+            }
+            catch (OverflowException)
+            {
+                throw new ApiValidationException("The order total exceeds the supported amount.");
+            }
             _context.Orders.Add(order);
             await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
             return order;
         }
 
@@ -63,12 +101,11 @@ namespace AiBusinessAssistant.Repositories.Implementations
                 .Include(o => o.OrderItems)
                 .FirstOrDefaultAsync(o => o.OrderId == id);
 
-            if (order != null)
-            {
-                _context.OrderItems.RemoveRange(order.OrderItems); // Clean up child items
-                _context.Orders.Remove(order);
-                await _context.SaveChangesAsync();
-            }
+            if (order is null)
+                throw new ApiNotFoundException($"Order {id} was not found.");
+
+            _context.Orders.Remove(order);
+            await _context.SaveChangesAsync();
         }
     }
 }

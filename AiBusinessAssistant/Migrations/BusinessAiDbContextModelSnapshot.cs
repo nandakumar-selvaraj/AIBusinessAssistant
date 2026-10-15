@@ -15,7 +15,7 @@ namespace AiBusinessAssistant.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "8.0.31");
+            modelBuilder.HasAnnotation("ProductVersion", "8.0.32");
 
             modelBuilder.Entity("AiBusinessAssistant.Entities.ChatConversation", b =>
                 {
@@ -224,7 +224,7 @@ namespace AiBusinessAssistant.Migrations
                     b.HasOne("AiBusinessAssistant.Entities.Product", "Product")
                         .WithMany("OrderItems")
                         .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Order");

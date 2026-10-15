@@ -1,4 +1,5 @@
 ﻿using AiBusinessAssistant.DTOs.Customer;
+using AiBusinessAssistant.Common.Exceptions;
 using AiBusinessAssistant.Entities;
 using AiBusinessAssistant.Repositories.Interfaces;
 using AiBusinessAssistant.Services.Interfaces;
@@ -48,7 +49,7 @@ namespace AiBusinessAssistant.Services.Implementations
         {
             var entity = new Customer
             {
-                Name = dto.Name,
+                Name = dto.Name.Trim(),
                 Email = dto.Email,
                 Phone = dto.Phone,
                 Address = dto.Address
@@ -70,9 +71,9 @@ namespace AiBusinessAssistant.Services.Implementations
         public async Task UpdateAsync(int id, UpsertCustomerDto dto)
         {
             var existing = await _customerRepository.GetByIdAsync(id);
-            if (existing == null) throw new KeyNotFoundException("Customer not found");
+            if (existing == null) throw new ApiNotFoundException($"Customer {id} was not found.");
 
-            existing.Name = dto.Name;
+            existing.Name = dto.Name.Trim();
             existing.Email = dto.Email;
             existing.Phone = dto.Phone;
             existing.Address = dto.Address;

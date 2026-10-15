@@ -2,9 +2,10 @@ import { Component, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { Header } from './layout/header/header';
 import { Sidebar } from './layout/sidebar/sidebar';
+import { GlobalLoader } from './shared/components/global-loader/global-loader';
 
 @Component({
-  imports: [RouterOutlet, Header, Sidebar],
+  imports: [RouterOutlet, Header, Sidebar, GlobalLoader],
   selector: 'app-root',
   styleUrl: './app.scss',
   templateUrl: './app.html',

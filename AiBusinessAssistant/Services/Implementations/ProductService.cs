@@ -1,4 +1,5 @@
 ﻿using AiBusinessAssistant.DTOs.Product;
+using AiBusinessAssistant.Common.Exceptions;
 using AiBusinessAssistant.Entities;
 using AiBusinessAssistant.Repositories.Interfaces;
 using AiBusinessAssistant.Services.Interfaces;
@@ -36,8 +37,8 @@ namespace AiBusinessAssistant.Services.Implementations
         {
             var entity = new Product
             {
-                Name = dto.Name,
-                SKU = dto.SKU,
+                Name = dto.Name.Trim(),
+                SKU = dto.SKU.Trim(),
                 Description = dto.Description,
                 UnitPrice = dto.UnitPrice,
                 StockQuantity = dto.StockQuantity,
@@ -51,10 +52,10 @@ namespace AiBusinessAssistant.Services.Implementations
         public async Task UpdateAsync(int id, UpsertProductDto dto)
         {
             var existing = await _productRepository.GetByIdAsync(id);
-            if (existing == null) throw new KeyNotFoundException("Product not found");
+            if (existing == null) throw new ApiNotFoundException($"Product {id} was not found.");
 
-            existing.Name = dto.Name;
-            existing.SKU = dto.SKU;
+            existing.Name = dto.Name.Trim();
+            existing.SKU = dto.SKU.Trim();
             existing.Description = dto.Description;
             existing.UnitPrice = dto.UnitPrice;
             existing.StockQuantity = dto.StockQuantity;

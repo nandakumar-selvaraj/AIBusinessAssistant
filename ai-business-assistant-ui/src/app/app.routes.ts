@@ -9,5 +9,9 @@ export const routes: Routes = [
     {
         path: 'dashboard',
         loadComponent: () => import('./features/dashboard/dashboard').then((m) => m.Dashboard),
-    }
+    },
+    { path: 'customers', loadComponent: () => import('./features/customers/customers').then((m) => m.Customers) },
+    { path: 'products', loadComponent: () => import('./features/products/products').then((m) => m.Products) },
+    { path: 'orders', loadComponent: () => import('./features/items/items').then((m) => m.Items) },
+    { path: 'items', redirectTo: 'orders', pathMatch: 'full' },
 ];

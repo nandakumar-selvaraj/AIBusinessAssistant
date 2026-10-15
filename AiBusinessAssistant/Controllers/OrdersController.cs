@@ -33,15 +33,8 @@ namespace AiBusinessAssistant.Controllers
         [HttpPost]
         public async Task<ActionResult<OrderDto>> Create([FromBody] CreateOrderDto dto)
         {
-            try
-            {
-                var created = await _orderService.CreateAsync(dto);
-                return CreatedAtAction(nameof(GetById), new { id = created.OrderId }, created);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
+            var created = await _orderService.CreateAsync(dto);
+            return CreatedAtAction(nameof(GetById), new { id = created.OrderId }, created);
         }
 
         [HttpDelete("{id}")]

@@ -22,7 +22,7 @@ export class Sidebar {
     { label: 'Dashboard', path: '/dashboard', icon: 'bi-grid' },
     { label: 'Customers', path: '/customers', icon: 'bi-people' },
     { label: 'Products', path: '/products', icon: 'bi-box' },
-    { label: 'Orders', path: '/orders', icon: 'bi-cart' },
+    { label: 'Orders', path: '/orders', icon: 'bi-cart' }
   ];
 
   protected readonly secondaryMenu: NavItem[] = [
