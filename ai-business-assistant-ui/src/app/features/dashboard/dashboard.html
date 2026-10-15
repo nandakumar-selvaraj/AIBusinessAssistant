@@ -1,46 +1,67 @@
+<div class="d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <h2 class="fw-bold fs-3 text-dark mb-1">Business Dashboard</h2>
+    <p class="text-secondary fs-6 mb-0">Your business overview, updated from your records.</p>
+  </div>
+  @if (!loading()) {
+    <button class="btn btn-outline-primary btn-sm" type="button" (click)="load()" aria-label="Refresh dashboard">
+      <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+    </button>
+  }
+</div>
+
+@if (error()) {
+  <div class="alert alert-danger d-flex justify-content-between align-items-center" role="alert">
+    <span>{{ error() }}</span>
+    <button class="btn btn-sm btn-outline-danger ms-3" type="button" (click)="load()">Retry</button>
+  </div>
+}
+
 <div class="row g-3">
-
-    <div class="mb-4">
-        <h2 class="fw-bold fs-3 text-dark mb-1">Business Dashboard</h2>
-        <p class="text-secondary fs-6 mb-0">Manage your business with AI-powered insights.</p>
-    </div>
-    <div class="col-12 col-sm-6 col-lg-3">
-        <app-stat-card icon="bi-people" value=123 label="Total Customers" color="text-customers"
-            secondaryLabel="Registered customers" percentage=4.9>
-        </app-stat-card>
-    </div>
-
-    <div class="col-12 col-sm-6 col-lg-3">
-        <app-stat-card icon="bi-bag" value=456 label="Total Orders" color="text-orders"
-            secondaryLabel="All recorded orders" percentage=2.3>
-        </app-stat-card>
-    </div>
-
-    <div class="col-12 col-sm-6 col-lg-3">
-        <app-stat-card icon="bi-currency-rupee" value=789 label="Revenue" color="text-revenue"
-            secondaryLabel="Illustrative total" percentage=5.1>
-        </app-stat-card>
-    </div>
-
-    <div class="col-12 col-sm-6 col-lg-3">
-        <app-stat-card icon="bi-clock" value=1011 label="Pending Orders" color="text-pending"
-            secondaryLabel="Awaiting processing" percentage=3.2>
-        </app-stat-card>
-    </div>
+  <div class="col-12 col-sm-6 col-lg-3">
+    <app-stat-card icon="bi-people" [value]="summary().totalCustomers" label="Total Customers" color="text-customers" secondaryLabel="Registered customers" />
+  </div>
+  <div class="col-12 col-sm-6 col-lg-3">
+    <app-stat-card icon="bi-bag" [value]="summary().totalOrders" label="Total Orders" color="text-orders" secondaryLabel="All recorded orders" />
+  </div>
+  <div class="col-12 col-sm-6 col-lg-3">
+    <app-stat-card icon="bi-currency-rupee" [value]="(summary().revenue | currency:'INR':'symbol':'1.0-2') ?? '₹0'" label="Revenue" color="text-revenue" secondaryLabel="Across all recorded orders" />
+  </div>
+  <div class="col-12 col-sm-6 col-lg-3">
+    <app-stat-card icon="bi-clock" [value]="summary().pendingOrders" label="Pending Orders" color="text-pending" secondaryLabel="Awaiting processing" />
+  </div>
 </div>
 
-<div class="p-0">
-    <div class="row g-0 mt-4">
-        <div class="col-12 col-sm-12 col-lg-12">
-            <app-recent-orders-card></app-recent-orders-card>
+<div class="row g-3 mt-1">
+  <div class="col-12 col-lg-7">
+    <app-recent-orders-card [orders]="summary().recentOrders" />
+  </div>
+  <div class="col-12 col-lg-5">
+    <section class="card orders-card p-4 h-100" aria-labelledby="low-stock-heading">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 id="low-stock-heading" class="fw-bold text-dark fs-5 mb-0">Low-stock products</h3>
+        <span class="badge rounded-pill text-bg-warning">{{ summary().lowStockProducts.length }}</span>
+      </div>
+      <p class="text-secondary small">Active products with 5 or fewer units in stock.</p>
+      @if (summary().lowStockProducts.length === 0) {
+        <div class="dashboard-empty">No low-stock products.</div>
+      } @else {
+        <div class="list-group list-group-flush">
+          @for (product of summary().lowStockProducts; track product.productId) {
+            <div class="list-group-item px-0 d-flex align-items-center justify-content-between gap-3">
+              <div class="min-w-0">
+                <div class="fw-semibold text-dark text-truncate">{{ product.name }}</div>
+                <small class="text-secondary">{{ product.sku }}</small>
+              </div>
+              <span class="badge text-bg-light border text-dark text-nowrap">{{ product.stockQuantity }} left</span>
+            </div>
+          }
         </div>
-    </div>
+      }
+    </section>
+  </div>
 </div>
 
-<div class="p-0">
-    <div class="row g-0 mt-4">
-        <div class="col-12 col-sm-12 col-lg-12">
-            <app-ai-insights class="d-block" [insights]="insights"></app-ai-insights>
-        </div>
-    </div>
+<div class="mt-3">
+  <app-ai-insights class="d-block" [insights]="insights()"></app-ai-insights>
 </div>
