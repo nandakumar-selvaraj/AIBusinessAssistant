@@ -38,7 +38,10 @@ namespace AiBusinessAssistant.Repositories.Implementations
                 throw new ApiNotFoundException($"Customer {order.CustomerId} was not found.");
 
             var productIds = order.OrderItems.Select(item => item.ProductId).Distinct().ToArray();
-            var products = await _context.Products.Where(product => productIds.Contains(product.ProductId)).ToDictionaryAsync(product => product.ProductId);
+            var products = await _context.Products
+                .AsNoTracking()
+                .Where(product => productIds.Contains(product.ProductId))
+                .ToDictionaryAsync(product => product.ProductId);
             var missingProductId = productIds.FirstOrDefault(productId => !products.ContainsKey(productId));
             if (missingProductId != 0)
                 throw new ApiNotFoundException($"Product {missingProductId} was not found.");
@@ -50,15 +53,35 @@ namespace AiBusinessAssistant.Repositories.Implementations
                 .GroupBy(item => item.ProductId)
                 .ToDictionary(group => group.Key, group => group.Sum(item => (long)item.Quantity));
 
+            if (await _context.Orders.AnyAsync(existing => existing.OrderNumber == order.OrderNumber))
+                throw new ApiConflictException($"Order number '{order.OrderNumber}' already exists.");
+
+            foreach (var product in products.Values)
+                _context.Products.Attach(product);
+
             foreach (var (productId, requestedQuantity) in requestedQuantities)
             {
                 var product = products[productId];
-                if (requestedQuantity > product.StockQuantity)
+                if (requestedQuantity > int.MaxValue)
                     throw new ApiConflictException($"Insufficient stock for '{product.Name}'. Requested {requestedQuantity}, available {product.StockQuantity}.");
-            }
 
-            if (await _context.Orders.AnyAsync(existing => existing.OrderNumber == order.OrderNumber))
-                throw new ApiConflictException($"Order number '{order.OrderNumber}' already exists.");
+                var quantityToReserve = (int)requestedQuantity;
+                var updatedRows = await _context.Products
+                    .Where(candidate => candidate.ProductId == productId && candidate.IsActive && candidate.StockQuantity >= quantityToReserve)
+                    .ExecuteUpdateAsync(update => update
+                        .SetProperty(candidate => candidate.StockQuantity, candidate => candidate.StockQuantity - quantityToReserve));
+
+                if (updatedRows == 0)
+                {
+                    var currentProduct = await _context.Products.AsNoTracking()
+                        .FirstOrDefaultAsync(candidate => candidate.ProductId == productId);
+                    if (currentProduct is null)
+                        throw new ApiNotFoundException($"Product {productId} was not found.");
+                    if (!currentProduct.IsActive)
+                        throw new ApiConflictException($"Product '{currentProduct.Name}' is inactive and cannot be ordered.");
+                    throw new ApiConflictException($"Insufficient stock for '{currentProduct.Name}'. Requested {requestedQuantity}, available {currentProduct.StockQuantity}.");
+                }
+            }
 
             var now = DateTime.UtcNow;
             order.CreatedAt = now;
@@ -71,9 +94,6 @@ namespace AiBusinessAssistant.Repositories.Implementations
                 item.Product = products[item.ProductId];
                 item.UnitPrice = item.Product.UnitPrice;
             }
-
-            foreach (var (productId, requestedQuantity) in requestedQuantities)
-                products[productId].StockQuantity -= (int)requestedQuantity;
 
             try
             {

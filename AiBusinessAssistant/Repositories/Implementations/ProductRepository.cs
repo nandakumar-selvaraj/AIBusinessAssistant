@@ -19,7 +19,7 @@ namespace AiBusinessAssistant.Repositories.Implementations
             await _context.Products.ToListAsync();
 
         public async Task<Product?> GetByIdAsync(int id) =>
-            await _context.Products.FindAsync(id);
+            await _context.Products.AsNoTracking().FirstOrDefaultAsync(product => product.ProductId == id);
 
         public async Task<Product?> GetBySkuAsync(string sku) =>
             await _context.Products.FirstOrDefaultAsync(p => p.SKU == sku);
