@@ -33,6 +33,16 @@ namespace AiBusinessAssistant.Services.Implementations
 
         public async Task<OrderDto> CreateAsync(CreateOrderDto dto)
         {
+            if (string.IsNullOrWhiteSpace(dto.OrderNumber))
+                throw new ApiValidationException("Order number is required.");
+
+            var orderNumber = dto.OrderNumber.Trim();
+            if (orderNumber.Length > 50)
+                throw new ApiValidationException("Order number cannot exceed 50 characters.");
+
+            if (dto.CustomerId <= 0)
+                throw new ApiValidationException("Customer ID must be a positive number.");
+
             if (dto.OrderItems is null || dto.OrderItems.Count == 0)
                 throw new ApiValidationException("An order must contain at least one item.");
 
@@ -53,7 +63,7 @@ namespace AiBusinessAssistant.Services.Implementations
 
             var entity = new Order
             {
-                OrderNumber = dto.OrderNumber.Trim(),
+                OrderNumber = orderNumber,
                 CustomerId = dto.CustomerId,
                 Status = "Pending",
                 OrderItems = dto.OrderItems.Select(i => new OrderItem
