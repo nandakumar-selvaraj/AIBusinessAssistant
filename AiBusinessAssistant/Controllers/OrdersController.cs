@@ -37,6 +37,13 @@ namespace AiBusinessAssistant.Controllers
             return CreatedAtAction(nameof(GetById), new { id = created.OrderId }, created);
         }
 
+        [HttpPost("{id:int}/complete")]
+        public async Task<ActionResult<OrderDto>> Complete(int id)
+        {
+            var completed = await _orderService.CompleteAsync(id);
+            return Ok(completed);
+        }
+
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

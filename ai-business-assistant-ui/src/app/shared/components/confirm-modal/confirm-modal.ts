@@ -10,6 +10,7 @@ export class ConfirmModal {
   readonly title = input('Confirm action');
   readonly message = input('Are you sure you want to continue?');
   readonly confirmText = input('Delete');
+  readonly confirmClass = input('btn-danger');
   readonly confirmed = output<void>();
   readonly closed = output<void>();
 

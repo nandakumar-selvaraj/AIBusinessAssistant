@@ -21,6 +21,8 @@ export class Items implements OnInit {
   protected readonly error = signal('');
   protected readonly expanded = signal<number | null>(null);
   protected readonly pendingDelete = signal<Order | null>(null);
+  protected readonly pendingComplete = signal<Order | null>(null);
+  protected readonly completingId = signal<number | null>(null);
   protected customerId: number | null = null;
   protected orderNumber = '';
   protected draftItems: DraftItem[] = [{ productId: null, quantity: 1 }];
@@ -50,6 +52,24 @@ export class Items implements OnInit {
     if (!order) return;
     this.pendingDelete.set(null);
     this.api.deleteOrder(order.orderId).subscribe({ next: () => this.load(), error: (e: HttpErrorResponse) => this.error.set(this.message(e)) });
+  }
+  protected confirmComplete(): void {
+    const order = this.pendingComplete();
+    if (!order) return;
+    this.error.set('');
+    this.completingId.set(order.orderId);
+    this.api.completeOrder(order.orderId).subscribe({
+      next: () => {
+        this.pendingComplete.set(null);
+        this.completingId.set(null);
+        this.load();
+      },
+      error: (e: HttpErrorResponse) => {
+        this.pendingComplete.set(null);
+        this.completingId.set(null);
+        this.error.set(this.message(e));
+      },
+    });
   }
   private load(): void { this.loading.set(true); this.api.orders().subscribe({ next: (x) => { this.orders.set(x); this.loading.set(false); }, error: (e: HttpErrorResponse) => { this.error.set(this.message(e)); this.loading.set(false); } }); }
   private message(e: HttpErrorResponse): string { return e.error?.message ?? 'The request failed. Check that the API is running and try again.'; }

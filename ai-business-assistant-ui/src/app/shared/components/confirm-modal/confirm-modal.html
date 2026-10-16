@@ -9,7 +9,7 @@
         <div class="modal-body">{{ message() }}</div>
         <div class="modal-footer">
           <button type="button" class="btn btn-light" (click)="closed.emit()">Cancel</button>
-          <button type="button" class="btn btn-danger" (click)="confirmed.emit()">{{ confirmText() }}</button>
+          <button type="button" class="btn" [class.btn-danger]="confirmClass() === 'btn-danger'" [class.btn-success]="confirmClass() === 'btn-success'" [class.btn-primary]="confirmClass() === 'btn-primary'" (click)="confirmed.emit()">{{ confirmText() }}</button>
         </div>
       </div>
     </div>

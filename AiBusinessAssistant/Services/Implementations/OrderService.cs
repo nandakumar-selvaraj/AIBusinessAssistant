@@ -77,6 +77,24 @@ namespace AiBusinessAssistant.Services.Implementations
             return MapToDto(created);
         }
 
+        public async Task<OrderDto> CompleteAsync(int id)
+        {
+            var order = await _orderRepository.GetByIdAsync(id);
+            if (order is null)
+                throw new ApiNotFoundException($"Order {id} was not found.");
+
+            if (string.Equals(order.Status, "Completed", StringComparison.OrdinalIgnoreCase))
+                return MapToDto(order);
+
+            if (!string.Equals(order.Status, "Pending", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(order.Status, "Processing", StringComparison.OrdinalIgnoreCase))
+                throw new ApiConflictException($"Order {id} cannot be completed from status '{order.Status}'.");
+
+            await _orderRepository.UpdateStatusAsync(id, "Completed");
+            order.Status = "Completed";
+            return MapToDto(order);
+        }
+
         public async Task DeleteAsync(int id) => await _orderRepository.DeleteAsync(id);
 
         private static OrderDto MapToDto(Order o)

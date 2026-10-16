@@ -8,6 +8,7 @@ namespace AiBusinessAssistant.Repositories.Interfaces
         Task<Order?> GetByIdAsync(int id);
         Task<Order> AddAsync(Order order);
         Task UpdateAsync(Order order);
+        Task UpdateStatusAsync(int id, string status);
         Task DeleteAsync(int id);
     }
 }

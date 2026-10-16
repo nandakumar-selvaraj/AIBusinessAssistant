@@ -22,6 +22,7 @@ export class BusinessApi {
   deleteProduct(id: number): Observable<void> { return this.http.delete<void>(`${API_BASE_URL}/products/${id}`); }
 
   orders(): Observable<Order[]> { return this.http.get<Order[]>(`${API_BASE_URL}/orders`); }
+  completeOrder(id: number): Observable<Order> { return this.http.post<Order>(`${API_BASE_URL}/orders/${id}/complete`, {}); }
   dashboardSummary(): Observable<DashboardSummary> { return this.http.get<DashboardSummary>(`${API_BASE_URL}/dashboard/summary`); }
   createOrder(payload: { orderNumber: string; customerId: number; orderItems: { productId: number; quantity: number }[] }): Observable<Order> { return this.http.post<Order>(`${API_BASE_URL}/orders`, payload); }
   deleteOrder(id: number): Observable<void> { return this.http.delete<void>(`${API_BASE_URL}/orders/${id}`); }

@@ -115,6 +115,16 @@ namespace AiBusinessAssistant.Repositories.Implementations
             await _context.SaveChangesAsync();
         }
 
+        public async Task UpdateStatusAsync(int id, string status)
+        {
+            var order = await _context.Orders.FirstOrDefaultAsync(existing => existing.OrderId == id);
+            if (order is null)
+                throw new ApiNotFoundException($"Order {id} was not found.");
+
+            order.Status = status;
+            await _context.SaveChangesAsync();
+        }
+
         public async Task DeleteAsync(int id)
         {
             var order = await _context.Orders
