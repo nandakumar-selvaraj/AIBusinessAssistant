@@ -362,6 +362,10 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 
+# Angular generated output and build cache
+ai-business-assistant-ui/dist/
+ai-business-assistant-ui/.angular/cache/
+
 # Vite build output
 vite/
 FodyWeavers.xsd
