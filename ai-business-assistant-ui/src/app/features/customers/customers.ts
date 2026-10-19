@@ -4,8 +4,9 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Customer, CustomerPayload } from '../../core/models/customer.model';
 import { BusinessApi } from '../../core/services/business-api';
 import { ConfirmModal } from '../../shared/components/confirm-modal/confirm-modal';
+import { CustomerList } from '../../shared/components/customer-list/customer-list';
 
-@Component({ selector: 'app-customers', imports: [FormsModule, ConfirmModal], templateUrl: './customers.html', styleUrl: './customers.scss' })
+@Component({ selector: 'app-customers', imports: [FormsModule, ConfirmModal, CustomerList], templateUrl: './customers.html', styleUrl: './customers.scss' })
 export class Customers implements OnInit {
   private readonly api = inject(BusinessApi);
   protected readonly rows = signal<Customer[]>([]);

@@ -1,0 +1,7 @@
+.table { --bs-table-bg: transparent; }
+.table thead th { color: var(--bai-muted); background: #f8fafc; font-size: .72rem; font-weight: 600; letter-spacing: .04em; padding: .8rem 1rem; text-transform: uppercase; white-space: nowrap; }
+.table tbody td { padding: .85rem 1rem; font-size: .88rem; }
+.product-description { max-width: 200px; }
+.empty-state { display: flex; min-height: 180px; flex-direction: column; align-items: center; justify-content: center; gap: .45rem; color: var(--bai-muted); }
+.empty-state > i { font-size: 1.8rem; color: #94a3b8; }
+.empty-state strong { color: var(--bai-text); }

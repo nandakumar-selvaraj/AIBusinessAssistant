@@ -45,15 +45,26 @@
             <div class="message-bubble user-bubble">{{ message.content }}</div>
           } @else {
             <div class="message-bubble assistant-bubble response-card">
-              <div class="response-toolbar">
-                <span><i class="bi bi-braces-asterisk me-1"></i>JSON response</span>
-                <button type="button" class="view-toggle" (click)="toggleResponseView(i)">
-                  {{ message.viewMode === 'json' ? 'Grid view' : 'JSON view' }}
-                </button>
-              </div>
-              @if (message.viewMode === 'json') {
-                <pre class="json-output">{{ message.jsonText }}</pre>
+              @if (message.products) {
+                <section class="bai-card assistant-products-card">
+                  <div class="assistant-products-heading">
+                    <div><h2 class="h6 fw-bold mb-1">Products</h2><span class="small text-secondary">{{ message.products.length }} {{ message.products.length === 1 ? 'product' : 'products' }}</span></div>
+                    <i class="bi bi-box-seam text-primary fs-5" aria-hidden="true"></i>
+                  </div>
+                  <app-product-list [products]="message.products" />
+                </section>
+              } @else if (message.customers) {
+                <section class="bai-card assistant-customers-card">
+                  <div class="assistant-customers-heading">
+                    <div><h2 class="h6 fw-bold mb-1">Customers</h2><span class="small text-secondary">{{ message.customers.length }} {{ message.customers.length === 1 ? 'customer' : 'customers' }}</span></div>
+                    <i class="bi bi-people text-primary fs-5" aria-hidden="true"></i>
+                  </div>
+                  <app-customer-list [customers]="message.customers" />
+                </section>
+              } @else if (message.orders) {
+                <app-order-items-list [orders]="message.orders" />
               } @else if (message.isList) {
+                <div class="response-toolbar"><span><i class="bi bi-table me-1"></i>Results</span></div>
                 @if (message.gridRows?.length) {
                   <div class="table-responsive response-grid-wrap">
                     <table class="table table-sm response-grid mb-0">
@@ -65,6 +76,7 @@
                   <p class="small text-secondary mb-0">No records returned.</p>
                 }
               } @else {
+                <div class="response-toolbar"><span><i class="bi bi-table me-1"></i>Results</span></div>
                 <dl class="response-grid mb-0">
                   @for (row of message.gridRows; track row[0]) {
                     <div class="response-field"><dt>{{ row[0] }}</dt><dd>{{ row[1] }}</dd></div>

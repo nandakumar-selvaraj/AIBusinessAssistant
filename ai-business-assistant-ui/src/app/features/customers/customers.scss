@@ -4,11 +4,6 @@
 .list-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1.15rem 1.25rem; border-bottom: 1px solid var(--bai-border); }
 .search-box { display: flex; align-items: center; gap: .55rem; color: var(--bai-muted); width: min(100%, 260px); }
 .search-box .form-control { border: 0; box-shadow: none; padding-left: 0; }
-.table { --bs-table-bg: transparent; }
-.table thead th { color: var(--bai-muted); background: #f8fafc; font-size: .72rem; font-weight: 600; letter-spacing: .04em; padding: .8rem 1rem; text-transform: uppercase; white-space: nowrap; }
-.table tbody td { padding: .85rem 1rem; font-size: .88rem; }
-.customer-name { display: flex; align-items: center; gap: .7rem; white-space: nowrap; }
-.avatar { display: grid; width: 2rem; height: 2rem; place-items: center; border-radius: 50%; background: #eff6ff; color: #2563eb; font-size: .8rem; font-weight: 700; }
 .form-card { padding: 1.25rem; }
 .form-heading { display: flex; align-items: center; gap: .8rem; margin-bottom: 1.3rem; }
 .form-icon { display: grid; width: 2.5rem; height: 2.5rem; place-items: center; border-radius: .65rem; background: #eff6ff; color: #2563eb; }

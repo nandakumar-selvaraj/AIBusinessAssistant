@@ -37,17 +37,37 @@ namespace AiBusinessAssistant.Repositories.Implementations
                 .OrderByDescending(o => o.OrderDate).ThenByDescending(o => o.OrderId)
                 .Take(limit).ToListAsync();
 
-        public async Task<Order?> GetHighestValueBetweenAsync(DateTime startInclusive, DateTime endExclusive) =>
-            await OrderQuery()
-                .Where(order => order.OrderDate >= startInclusive && order.OrderDate < endExclusive)
-                .OrderByDescending(order => order.TotalAmount).ThenByDescending(order => order.OrderDate)
-                .ThenByDescending(order => order.OrderId).FirstOrDefaultAsync();
+        public async Task<Order?> GetHighestValueBetweenAsync(DateTime startInclusive, DateTime endExclusive)
+        {
+            var results = await GetTopValueBetweenAsync(startInclusive, endExclusive, 1);
+            return results.FirstOrDefault();
+        }
 
-        public async Task<IEnumerable<Order>> GetTopValueBetweenAsync(DateTime startInclusive, DateTime endExclusive, int limit) =>
-            await OrderQuery()
+        public async Task<IEnumerable<Order>> GetTopValueBetweenAsync(DateTime startInclusive, DateTime endExclusive, int limit)
+        {
+            // SQLite cannot translate ORDER BY over decimal values. Load only the
+            // monthly totals first, rank them with exact decimal arithmetic, then
+            // fetch full order details for the bounded result set.
+            var rankedOrderIds = (await _context.Orders.AsNoTracking()
                 .Where(order => order.OrderDate >= startInclusive && order.OrderDate < endExclusive)
-                .OrderByDescending(order => order.TotalAmount).ThenByDescending(order => order.OrderDate)
-                .ThenByDescending(order => order.OrderId).Take(limit).ToListAsync();
+                .Select(order => new { order.OrderId, order.TotalAmount, order.OrderDate })
+                .ToListAsync())
+                .OrderByDescending(order => order.TotalAmount)
+                .ThenByDescending(order => order.OrderDate)
+                .ThenByDescending(order => order.OrderId)
+                .Take(limit)
+                .Select(order => order.OrderId)
+                .ToList();
+
+            if (rankedOrderIds.Count == 0)
+                return [];
+
+            var ordersById = await OrderQuery()
+                .Where(order => rankedOrderIds.Contains(order.OrderId))
+                .ToDictionaryAsync(order => order.OrderId);
+
+            return rankedOrderIds.Select(orderId => ordersById[orderId]).ToList();
+        }
 
         public async Task<IEnumerable<Order>> GetPendingAsync(int limit) =>
             await OrderQuery().Where(order => order.Status == "Pending")

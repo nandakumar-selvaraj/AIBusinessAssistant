@@ -1,0 +1,42 @@
+<section class="bai-card order-list">
+  <div class="list-toolbar">
+    <div>
+      <h2 class="h6 fw-bold mb-1">Orders and items</h2>
+      <span class="small text-secondary">{{ orders.length }} {{ orders.length === 1 ? 'order' : 'orders' }}</span>
+    </div>
+    <i class="bi bi-receipt text-primary fs-5" aria-hidden="true"></i>
+  </div>
+  <div class="order-stack">
+    @for (order of orders; track order.orderId) {
+      <article class="order-entry">
+        <div class="order-summary">
+          <button type="button" class="order-expand" [attr.aria-expanded]="expanded() === order.orderId" (click)="toggle(order.orderId)">
+            <i class="bi" [class.bi-chevron-down]="expanded() === order.orderId" [class.bi-chevron-right]="expanded() !== order.orderId"></i>
+            <span><strong>{{ order.orderNumber }}</strong><small>{{ order.customerName }} · {{ order.orderDate | date:'mediumDate' }}</small></span>
+          </button>
+          <div class="order-total">
+            <strong>{{ order.totalAmount | currency:'INR':'symbol':'1.2-2' }}</strong>
+            <small>{{ order.orderItems.length }} {{ order.orderItems.length === 1 ? 'item' : 'items' }}</small>
+          </div>
+          <div class="order-actions">
+            <span class="badge rounded-pill" [class.text-bg-warning]="order.status.toLowerCase() === 'pending'" [class.text-bg-info]="order.status.toLowerCase() === 'processing'" [class.text-bg-success]="order.status.toLowerCase() === 'completed'" [class.text-bg-secondary]="order.status.toLowerCase() !== 'pending' && order.status.toLowerCase() !== 'processing' && order.status.toLowerCase() !== 'completed'">{{ order.status }}</span>
+            @if (showActions && (order.status.toLowerCase() === 'pending' || order.status.toLowerCase() === 'processing')) {
+              <button class="btn btn-sm btn-outline-success" type="button" [disabled]="completingId === order.orderId" [attr.aria-label]="'Complete order ' + order.orderNumber" (click)="completeOrder.emit(order)"><i class="bi bi-check2-circle me-1"></i>Complete</button>
+            }
+          </div>
+          @if (showActions) {
+            <button class="btn btn-sm btn-light text-danger" type="button" [attr.aria-label]="'Delete order ' + order.orderNumber" (click)="deleteOrder.emit(order)"><i class="bi bi-trash3"></i></button>
+          }
+        </div>
+        @if (expanded() === order.orderId) {
+          <div class="line-items">
+            <div class="line-head"><span>Item</span><span>Qty</span><span>Unit price</span><span>Total</span></div>
+            @for (item of order.orderItems; track item.productId + '-' + $index) {
+              <div class="line-row"><span>{{ item.productName }}</span><span>{{ item.quantity }}</span><span>{{ item.unitPrice | currency:'INR':'symbol':'1.2-2' }}</span><strong>{{ item.lineTotal | currency:'INR':'symbol':'1.2-2' }}</strong></div>
+            }
+          </div>
+        }
+      </article>
+    }
+  </div>
+</section>

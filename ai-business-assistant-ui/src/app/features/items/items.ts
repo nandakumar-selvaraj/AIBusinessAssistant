@@ -1,4 +1,4 @@
-import { CurrencyPipe, DatePipe } from '@angular/common';
+import { CurrencyPipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -7,10 +7,11 @@ import { Customer } from '../../core/models/customer.model';
 import { Product } from '../../core/models/product.model';
 import { Order } from '../../core/models/order.model';
 import { ConfirmModal } from '../../shared/components/confirm-modal/confirm-modal';
+import { OrderItemsList } from '../../shared/components/order-items-list/order-items-list';
 
 interface DraftItem { productId: number | null; quantity: number; }
 
-@Component({ selector: 'app-items', imports: [FormsModule, CurrencyPipe, DatePipe, ConfirmModal], templateUrl: './items.html', styleUrl: './items.scss' })
+@Component({ selector: 'app-items', imports: [FormsModule, CurrencyPipe, ConfirmModal, OrderItemsList], templateUrl: './items.html', styleUrl: './items.scss' })
 export class Items implements OnInit {
   private readonly api = inject(BusinessApi);
   protected readonly orders = signal<Order[]>([]);
@@ -19,7 +20,6 @@ export class Items implements OnInit {
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
   protected readonly error = signal('');
-  protected readonly expanded = signal<number | null>(null);
   protected readonly pendingDelete = signal<Order | null>(null);
   protected readonly pendingComplete = signal<Order | null>(null);
   protected readonly completingId = signal<number | null>(null);
@@ -37,7 +37,6 @@ export class Items implements OnInit {
   protected product(id: number | null): Product | undefined { return this.products().find((p) => p.productId === Number(id)); }
   protected lineTotal(item: DraftItem): number { return (this.product(item.productId)?.unitPrice ?? 0) * (Number(item.quantity) || 0); }
   protected get draftTotal(): number { return this.draftItems.reduce((sum, item) => sum + this.lineTotal(item), 0); }
-  protected toggle(id: number): void { this.expanded.set(this.expanded() === id ? null : id); }
   protected save(): void {
     this.error.set('');
     if (!this.customerId || !this.orderNumber.trim() || this.draftItems.some((i) => !i.productId || i.quantity < 1)) { this.error.set('Enter an order number, choose a customer, and add at least one valid item.'); return; }

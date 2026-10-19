@@ -43,3 +43,8 @@ body {
 .text-pending {
   color: #E67E22 !important;
 }
+
+.assistant-customers-card { overflow: hidden; }
+.assistant-customers-heading { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.15rem; border-bottom: 1px solid var(--bai-border); }
+.assistant-products-card { overflow: hidden; }
+.assistant-products-heading { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.15rem; border-bottom: 1px solid var(--bai-border); }

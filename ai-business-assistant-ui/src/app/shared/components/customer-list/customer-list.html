@@ -1,0 +1,33 @@
+<div class="table-responsive">
+  <table class="table align-middle mb-0">
+    <thead>
+      <tr>
+        <th>Customer</th>
+        <th>{{ showDetails ? 'Contact' : 'Email' }}</th>
+        @if (showDetails) { <th>Address</th> }
+        @if (showActions) { <th class="text-end">Actions</th> }
+      </tr>
+    </thead>
+    <tbody>
+      @for (customer of customers; track customer.customerId) {
+        <tr>
+          <td><div class="customer-name"><span class="avatar">{{ customer.name.charAt(0).toUpperCase() }}</span><span class="fw-semibold">{{ customer.name }}</span></div></td>
+          <td>
+            <span>{{ customer.email || '—' }}</span>
+            @if (showDetails && customer.phone) { <small class="d-block text-secondary">{{ customer.phone }}</small> }
+          </td>
+          @if (showDetails) { <td class="text-secondary">{{ customer.address || '—' }}</td> }
+          @if (showActions) {
+            <td class="text-end text-nowrap">
+              <button class="btn btn-sm btn-light me-1" type="button" aria-label="Edit customer" (click)="editCustomer.emit(customer)"><i class="bi bi-pencil"></i></button>
+              <button class="btn btn-sm btn-light text-danger" type="button" aria-label="Delete customer" (click)="deleteCustomer.emit(customer)"><i class="bi bi-trash3"></i></button>
+            </td>
+          }
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+@if (!customers.length) {
+  <div class="empty-state"><i class="bi bi-people"></i><strong>No customers found</strong></div>
+}

@@ -1,12 +1,12 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
-import { CurrencyPipe } from '@angular/common';
 import { ConfirmModal } from '../../shared/components/confirm-modal/confirm-modal';
+import { ProductList } from '../../shared/components/product-list/product-list';
 import { Product, ProductPayload } from '../../core/models/product.model';
 import { BusinessApi } from '../../core/services/business-api';
 
-@Component({ selector: 'app-products', imports: [FormsModule, CurrencyPipe, ConfirmModal], templateUrl: './products.html', styleUrl: './products.scss' })
+@Component({ selector: 'app-products', imports: [FormsModule, ConfirmModal, ProductList], templateUrl: './products.html', styleUrl: './products.scss' })
 export class Products implements OnInit {
   private readonly api = inject(BusinessApi);
   protected readonly rows = signal<Product[]>([]);

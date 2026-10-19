@@ -16,7 +16,7 @@ namespace AiBusinessAssistant.Repositories.Implementations
         }
 
         public async Task<IEnumerable<Customer>> GetAllAsync() =>
-            await _context.Customers.Include(c => c.Orders).ToListAsync();
+            await _context.Customers.AsNoTracking().OrderBy(customer => customer.Name).ToListAsync();
 
         public async Task<IEnumerable<Customer>> GetTopAsync(int limit) =>
             await _context.Customers.AsNoTracking().OrderBy(c => c.Name).Take(limit).ToListAsync();

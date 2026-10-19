@@ -4,25 +4,31 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { BusinessApi } from '../../core/services/business-api';
 import { ChatRequest } from '../../core/models/chat.model';
+import { Order } from '../../core/models/order.model';
+import { Customer } from '../../core/models/customer.model';
+import { Product } from '../../core/models/product.model';
+import { OrderItemsList } from '../../shared/components/order-items-list/order-items-list';
+import { CustomerList } from '../../shared/components/customer-list/customer-list';
+import { ProductList } from '../../shared/components/product-list/product-list';
 
 type ChatRole = 'user' | 'assistant';
-type ResponseView = 'grid' | 'json';
 interface ChatEntry {
   role: ChatRole;
   content: string;
   createdAt: Date;
-  jsonText?: string;
   gridColumns?: string[];
   gridRows?: string[][];
   isList?: boolean;
-  viewMode?: ResponseView;
+  orders?: Order[];
+  customers?: Customer[];
+  products?: Product[];
 }
 
 const MAX_MESSAGE_LENGTH = 4000;
 
 @Component({
   selector: 'app-ai-assistant',
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, OrderItemsList, CustomerList, ProductList],
   templateUrl: './ai-assistant.html',
   styleUrl: './ai-assistant.scss',
 })
@@ -37,6 +43,8 @@ export class AiAssistant {
   protected draft = '';
 
   protected readonly suggestions = [
+    'Show me all customers',
+    'Last 5 orders',
     'Last month registered users',
     'Highest order of the month',
     'Top 5 orders of the month',
@@ -64,7 +72,7 @@ export class AiAssistant {
     this.api.chat(request).subscribe({
       next: (response) => {
         this.conversationId.set(response.conversationId);
-        this.messages.update((entries) => [...entries, this.toAssistantEntry(response.assistantMessage, new Date(response.createdAt))]);
+        this.messages.update((entries) => [...entries, this.toAssistantEntry(response.assistantMessage, new Date(response.createdAt), message)]);
         this.sending.set(false);
       },
       error: (response: HttpErrorResponse) => {
@@ -72,13 +80,6 @@ export class AiAssistant {
         this.sending.set(false);
       },
     });
-  }
-
-  protected toggleResponseView(index: number): void {
-    this.messages.update((entries) => entries.map((entry, entryIndex) =>
-      entryIndex === index && entry.role === 'assistant'
-        ? { ...entry, viewMode: entry.viewMode === 'json' ? 'grid' : 'json' }
-        : entry));
   }
 
   protected startNewConversation(): void {
@@ -100,16 +101,37 @@ export class AiAssistant {
     }
   }
 
-  private toAssistantEntry(content: string, createdAt: Date): ChatEntry {
-    let data: unknown;
-    try {
-      data = JSON.parse(content);
-    } catch {
-      data = { response: content };
-    }
+  private toAssistantEntry(content: string, createdAt: Date, prompt: string): ChatEntry {
+    const data = this.parseAssistantContent(content);
+    const isCustomerQuery = /\bcustomers?\b/i.test(prompt) && !/\bregistered\s+customers?\b/i.test(prompt);
+    const isProductQuery = /\bproducts?\b/i.test(prompt);
 
     if (Array.isArray(data)) {
       const recordsOnly = data.every((item) => item !== null && typeof item === 'object' && !Array.isArray(item));
+      if (isProductQuery && (data.length === 0 || (recordsOnly && this.isProductRecord(data[0] as Record<string, unknown>)))) {
+        return {
+          role: 'assistant',
+          content,
+          createdAt,
+          products: data.map((item) => this.toProduct(item as Record<string, unknown>)),
+        };
+      }
+      if (isCustomerQuery && (data.length === 0 || (recordsOnly && this.isCustomerRecord(data[0] as Record<string, unknown>)))) {
+        return {
+          role: 'assistant',
+          content,
+          createdAt,
+          customers: data.map((item) => this.toCustomer(item as Record<string, unknown>)),
+        };
+      }
+      if (recordsOnly && data.length > 0 && this.isOrderRecord(data[0] as Record<string, unknown>)) {
+        return {
+          role: 'assistant',
+          content,
+          createdAt,
+          orders: data.map((item) => this.toOrder(item as Record<string, unknown>)),
+        };
+      }
       const columns = recordsOnly
         ? [...new Set(data.flatMap((item) => Object.keys(item as Record<string, unknown>)))]
         : [];
@@ -121,26 +143,153 @@ export class AiAssistant {
         }
         return [String(rowIndex + 1), this.cellValue(item)];
       });
-      return { role: 'assistant', content, createdAt, jsonText: JSON.stringify(data, null, 2), gridColumns, gridRows, isList: true, viewMode: 'grid' };
+      return { role: 'assistant', content, createdAt, gridColumns, gridRows, isList: true };
     }
 
     const record = data !== null && typeof data === 'object' ? data as Record<string, unknown> : { response: data };
+    if (isCustomerQuery && this.isCustomerRecord(record)) {
+      return {
+        role: 'assistant',
+        content,
+        createdAt,
+        customers: [this.toCustomer(record)],
+      };
+    }
+    if (isProductQuery && this.isProductRecord(record)) {
+      return {
+        role: 'assistant',
+        content,
+        createdAt,
+        products: [this.toProduct(record)],
+      };
+    }
+    if (this.isOrderRecord(record)) {
+      return {
+        role: 'assistant',
+        content,
+        createdAt,
+        orders: [this.toOrder(record)],
+      };
+    }
+
     return {
       role: 'assistant',
       content,
       createdAt,
-      jsonText: JSON.stringify(data, null, 2),
       gridColumns: ['Field', 'Value'],
       gridRows: Object.entries(record).map(([key, value]) => [key, this.cellValue(value)]),
       isList: false,
-      viewMode: 'grid',
     };
+  }
+
+  private isProductRecord(record: Record<string, unknown>): boolean {
+    const keys = new Set(Object.keys(record).map((key) => key.toLowerCase()));
+    return keys.has('productid') && keys.has('name') && keys.has('sku');
+  }
+
+  private toProduct(record: Record<string, unknown>): Product {
+    return {
+      productId: Number(this.getProperty(record, 'productId')) || 0,
+      name: String(this.getProperty(record, 'name') ?? 'Product'),
+      sku: String(this.getProperty(record, 'sku') ?? ''),
+      description: this.getProperty(record, 'description') ? String(this.getProperty(record, 'description')) : null,
+      unitPrice: Number(this.getProperty(record, 'unitPrice')) || 0,
+      stockQuantity: Number(this.getProperty(record, 'stockQuantity')) || 0,
+      isActive: Boolean(this.getProperty(record, 'isActive')),
+      createdAt: String(this.getProperty(record, 'createdAt') ?? ''),
+    };
+  }
+
+  private isCustomerRecord(record: Record<string, unknown>): boolean {
+    const keys = new Set(Object.keys(record).map((key) => key.toLowerCase()));
+    return keys.has('customerid') && keys.has('name');
+  }
+
+  private toCustomer(record: Record<string, unknown>): Customer {
+    return {
+      customerId: Number(this.getProperty(record, 'customerId')) || 0,
+      name: String(this.getProperty(record, 'name') ?? 'Customer'),
+      email: this.getProperty(record, 'email') ? String(this.getProperty(record, 'email')) : null,
+      phone: null,
+      address: null,
+      createdAt: String(this.getProperty(record, 'createdAt') ?? ''),
+    };
+  }
+
+  private isOrderRecord(record: Record<string, unknown>): boolean {
+    const keys = new Set(Object.keys(record).map((key) => key.toLowerCase()));
+    return keys.has('ordernumber') && keys.has('totalamount') && (keys.has('items') || keys.has('orderitems'));
+  }
+
+  private toOrder(record: Record<string, unknown>): Order {
+    const sourceItems = this.getProperty(record, 'items', 'orderItems');
+    const items = Array.isArray(sourceItems) ? sourceItems.map((source) => {
+      const item = source !== null && typeof source === 'object' ? source as Record<string, unknown> : {};
+      const quantity = Number(this.getProperty(item, 'quantity')) || 0;
+      const unitPrice = Number(this.getProperty(item, 'unitPrice')) || 0;
+      return {
+        productId: Number(this.getProperty(item, 'productId')) || 0,
+        productName: String(this.getProperty(item, 'productName', 'name') ?? 'Item'),
+        quantity,
+        unitPrice,
+        lineTotal: Number(this.getProperty(item, 'lineTotal')) || quantity * unitPrice,
+      };
+    }) : [];
+
+    return {
+      orderId: Number(this.getProperty(record, 'orderId')) || 0,
+      orderNumber: String(this.getProperty(record, 'orderNumber') ?? 'Order'),
+      customerId: Number(this.getProperty(record, 'customerId')) || 0,
+      customerName: String(this.getProperty(record, 'customerName') ?? 'Customer'),
+      orderDate: String(this.getProperty(record, 'orderDate') ?? ''),
+      status: String(this.getProperty(record, 'status') ?? 'Unknown'),
+      totalAmount: Number(this.getProperty(record, 'totalAmount')) || 0,
+      orderItems: items,
+    };
+  }
+
+  private getProperty(record: Record<string, unknown>, ...names: string[]): unknown {
+    const key = Object.keys(record).find((candidate) => names.some((name) => candidate.toLowerCase() === name.toLowerCase()));
+    return key ? record[key] : undefined;
   }
 
   private cellValue(value: unknown): string {
     if (value === null || value === undefined) return '—';
     if (typeof value === 'object') return JSON.stringify(value);
     return String(value);
+  }
+
+  private parseAssistantContent(content: string): unknown {
+    let candidate = content.trim();
+    const fencedJson = candidate.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+    if (fencedJson) candidate = fencedJson[1].trim();
+
+    try {
+      const parsed: unknown = JSON.parse(candidate);
+      if (typeof parsed === 'string') {
+        const nested = parsed.trim();
+        if (nested.startsWith('[') || nested.startsWith('{')) {
+          try {
+            return JSON.parse(nested) as unknown;
+          } catch {
+            return { response: parsed };
+          }
+        }
+      }
+      return parsed;
+    } catch {
+      // Some local models add a short preamble around otherwise valid JSON.
+      const start = candidate.search(/[\[{]/);
+      const end = Math.max(candidate.lastIndexOf(']'), candidate.lastIndexOf('}'));
+      if (start >= 0 && end > start) {
+        try {
+          return JSON.parse(candidate.slice(start, end + 1)) as unknown;
+        } catch {
+          // Fall through and display the message as a single response field.
+        }
+      }
+      return { response: content };
+    }
   }
 
   private errorMessage(response: HttpErrorResponse): string {

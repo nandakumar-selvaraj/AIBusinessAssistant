@@ -35,6 +35,15 @@ public sealed class CustomerPlugin(ICustomerService customers)
         return ToolJson.Serialize(results);
     }
 
+    [KernelFunction("list_all_customers")]
+    [Description("List all customers with their IDs, names, and email addresses. Phone numbers and addresses are excluded.")]
+    public async Task<string> ListAllCustomers()
+    {
+        var results = (await customers.GetAllAsync())
+            .Select(customer => new { customer.CustomerId, customer.Name, customer.Email });
+        return ToolJson.Serialize(results);
+    }
+
     [KernelFunction("list_customers")]
     [Description("List a bounded number of customer names and email addresses. Phone numbers and addresses are not returned.")]
     public async Task<string> ListCustomers(
