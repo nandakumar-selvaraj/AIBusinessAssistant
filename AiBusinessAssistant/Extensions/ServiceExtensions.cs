@@ -13,11 +13,13 @@ namespace AiBusinessAssistant.Extensions
             services.AddScoped<ICustomerRepository, CustomerRepository>();
             services.AddScoped<IProductRepository, ProductRepository>();
             services.AddScoped<IOrderRepository, OrderRepository>();
+            services.AddScoped<IDashboardRepository, DashboardRepository>();
 
             // Services
             services.AddScoped<ICustomerService, CustomerService>();
             services.AddScoped<IOrderService, OrderService>();
             services.AddScoped<IProductService, ProductService>();
+            services.AddScoped<IDashboardService, DashboardService>();
 
             return services;
         }

@@ -2,6 +2,8 @@ using AiBusinessAssistant.Controllers;
 using AiBusinessAssistant.Data;
 using AiBusinessAssistant.DTOs.Dashboard;
 using AiBusinessAssistant.Entities;
+using AiBusinessAssistant.Repositories.Implementations;
+using AiBusinessAssistant.Services.Implementations;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -22,7 +24,7 @@ public class DashboardControllerTests
         await using var db = new BusinessAiDbContext(options);
         await db.Database.EnsureCreatedAsync();
 
-        var result = await new DashboardController(db).GetSummary(CancellationToken.None);
+        var result = await CreateController(db).GetSummary(CancellationToken.None);
         var summary = Assert.IsType<DashboardSummaryDto>(Assert.IsType<OkObjectResult>(result.Result).Value);
 
         Assert.Equal(0, summary.TotalCustomers);
@@ -63,7 +65,7 @@ public class DashboardControllerTests
             });
         await db.SaveChangesAsync();
 
-        var result = await new DashboardController(db).GetSummary(CancellationToken.None);
+        var result = await CreateController(db).GetSummary(CancellationToken.None);
         var summary = Assert.IsType<DashboardSummaryDto>(Assert.IsType<OkObjectResult>(result.Result).Value);
 
         Assert.Equal(2, summary.TotalCustomers);
@@ -75,4 +77,7 @@ public class DashboardControllerTests
         Assert.Equal("LOW-1", lowStock.SKU);
         Assert.Equal(5, lowStock.StockQuantity);
     }
+
+    private static DashboardController CreateController(BusinessAiDbContext db) =>
+        new(new DashboardService(new DashboardRepository(db)));
 }
