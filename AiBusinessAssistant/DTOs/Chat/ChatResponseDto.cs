@@ -6,4 +6,5 @@ public sealed class ChatResponseDto
     public string UserMessage { get; set; } = string.Empty;
     public string AssistantMessage { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
+    public OrderWorkflowResponseDto? OrderWorkflow { get; set; }
 }

@@ -11,6 +11,8 @@ namespace AiBusinessAssistant.Data
         public DbSet<OrderItem> OrderItems => Set<OrderItem>();
         public DbSet<ChatConversation> ChatConversations => Set<ChatConversation>();
         public DbSet<ChatMessage> ChatMessages => Set<ChatMessage>();
+        public DbSet<OrderWorkflow> OrderWorkflows => Set<OrderWorkflow>();
+        public DbSet<OrderWorkflowItem> OrderWorkflowItems => Set<OrderWorkflowItem>();
 
         public BusinessAiDbContext(DbContextOptions<BusinessAiDbContext> options) : base(options) { }
 
@@ -45,6 +47,20 @@ namespace AiBusinessAssistant.Data
                 .WithMany(p => p.OrderItems)
                 .HasForeignKey(oi => oi.ProductId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<OrderWorkflow>()
+                .HasOne<ChatConversation>()
+                .WithOne()
+                .HasForeignKey<OrderWorkflow>(workflow => workflow.ConversationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<OrderWorkflowItem>()
+                .HasKey(item => new { item.ConversationId, item.ProductId });
+            modelBuilder.Entity<OrderWorkflowItem>()
+                .HasOne<OrderWorkflow>()
+                .WithMany(workflow => workflow.Items)
+                .HasForeignKey(item => item.ConversationId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

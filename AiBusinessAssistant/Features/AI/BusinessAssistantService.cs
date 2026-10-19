@@ -21,6 +21,7 @@ public sealed class BusinessAssistantService(
     BusinessAiDbContext db,
     IOptions<OllamaOptions> options,
     ConversationLockProvider conversationLocks,
+    IOrderWorkflowService orderWorkflow,
     ILogger<BusinessAssistantService> logger) : IBusinessAssistantService
 {
     private static readonly string SystemInstruction = LoadSystemInstruction();
@@ -56,9 +57,19 @@ public sealed class BusinessAssistantService(
         await db.SaveChangesAsync(cancellationToken);
 
         string assistantText;
+        OrderWorkflowResponseDto? workflowResponse = null;
         try
         {
-            assistantText = await GenerateResponseAsync(conversation.ConversationId, cancellationToken);
+            if (Regex.IsMatch(message, @"\b(?:place|create|start|make)\s+(?:an?\s+)?orders?\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+            {
+                workflowResponse = await orderWorkflow.StartAsync(conversation.ConversationId, cancellationToken);
+                assistantText = workflowResponse.AssistantMessage;
+            }
+            else
+            {
+                workflowResponse = await orderWorkflow.GetActiveAsync(conversation.ConversationId, cancellationToken);
+                assistantText = workflowResponse?.AssistantMessage ?? await GenerateResponseAsync(conversation.ConversationId, cancellationToken);
+            }
             if (string.IsNullOrWhiteSpace(assistantText))
                 assistantText = "I couldn't generate a response. Please rephrase your question and try again.";
         }
@@ -93,7 +104,8 @@ public sealed class BusinessAssistantService(
             ConversationId = conversation.ConversationId,
             UserMessage = message,
             AssistantMessage = assistantText,
-            CreatedAt = createdAt
+            CreatedAt = createdAt,
+            OrderWorkflow = workflowResponse
         };
     }
 
@@ -129,7 +141,7 @@ public sealed class BusinessAssistantService(
 
     private async Task<string?> InvokeApprovedLookupAsync(string message, CancellationToken cancellationToken)
     {
-        var input = message.Trim();
+        var input = NormalizeLookupInput(message);
         if (IsRegisteredCustomersQuery(input))
         {
             var (year, month) = GetRequestedMonth(input);
@@ -140,7 +152,7 @@ public sealed class BusinessAssistantService(
         }
 
         var recentOrdersMatch = Regex.Match(input,
-            @"\b(?:last|latest|recent)\s+(?<count>\d+|n)\s+orders?\b",
+            @"\b(?:(?:last|latest|recent)\s+(?<count>\d+|n)|(?<count>\d+|n)\s+(?:most\s+)?(?:recent|latest))\s+orders?\b",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
         if (recentOrdersMatch.Success)
         {
@@ -149,7 +161,7 @@ public sealed class BusinessAssistantService(
         }
 
         var topOrdersMatch = Regex.Match(input, @"\btop\s+(?<count>\d+|n)\s+orders?\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-        if (topOrdersMatch.Success || Regex.IsMatch(input, @"\btop\s+orders?\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+        if (topOrdersMatch.Success || Regex.IsMatch(input, @"\b(?:top|best|largest\s+value)\s+orders?\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
         {
             var (year, month) = GetRequestedMonth(input);
             var limit = topOrdersMatch.Success && int.TryParse(topOrdersMatch.Groups["count"].Value, out var count) ? count : 5;
@@ -168,11 +180,12 @@ public sealed class BusinessAssistantService(
             }, cancellationToken);
         }
 
-        if (Regex.IsMatch(input, @"\bpending\s+orders?\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+        if (Regex.IsMatch(input, @"\borders?\s+(?:that\s+are\s+)?pending\b|\bpending\s+orders?\b|\bunfulfilled\s+orders?\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
             return await InvokeAsync("Order", "list_pending_orders", new KernelArguments { ["limit"] = 20 }, cancellationToken);
 
-        if (Regex.IsMatch(input, @"\bactive\s+products?\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant) &&
-            Regex.IsMatch(input, @"\bstock\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+        if ((Regex.IsMatch(input, @"\b(?:active\s+products?|products?\s+(?:that\s+are\s+)?active)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant) ||
+             Regex.IsMatch(input, @"\bproducts?\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)) &&
+            Regex.IsMatch(input, @"\b(?:low\s+(?:on\s+)?(?:stock|inventory)|running\s+low|(?:stock|inventory)\s+(?:is\s+)?low)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
         {
             var thresholdMatch = Regex.Match(input, @"\bwith\s+(?<threshold>\d+)\s+or\s+fewer\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
             var threshold = thresholdMatch.Success && int.TryParse(thresholdMatch.Groups["threshold"].Value, out var parsedThreshold)
@@ -184,36 +197,36 @@ public sealed class BusinessAssistantService(
             }, cancellationToken);
         }
 
-        if (Match(input, @"^customer\s+(?:id\s*[:#]?\s*)?(?<id>\d+)\s*[?.!]*$", out var customerId))
+        if (Match(input, @"^(?:(?:show|get|find|look up)\s+(?:me\s+)?(?:the\s+)?)?customer\s+(?:id\s*[:#]?\s*)?(?<id>\d+)\s*[?.!]*$", out var customerId))
             return await InvokeAsync("Customer", "get_customer_by_id", new KernelArguments { ["customerId"] = int.Parse(customerId) }, cancellationToken);
         if (Regex.IsMatch(input,
-            @"^(?:(?:show|list)(?:\s+me)?\s+)?all\s+customers?\s*[?.!]*$|^(?:(?:show|list)(?:\s+me)?\s+)?customers?\s*[?.!]*$",
+            @"^(?:(?:show|list|get)(?:\s+me)?\s+)?all\s+customers?\s*[?.!]*$|^(?:(?:show|list|get)(?:\s+me)?\s+)?customers?\s*[?.!]*$",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
             return await InvokeAsync("Customer", "list_all_customers", new KernelArguments(), cancellationToken);
 
         if (Match(input,
-            @"^(?:show|find|search|look up)(?:\s+me)?\s+(?:the\s+)?customers?\s*(?::\s*|\s+)(?<query>.+?)\s*[?.!]*$",
+            @"^(?:show|find|search|look up|get)(?:\s+me)?\s+(?:the\s+)?customers?\s*(?::\s*|\s+)(?<query>.+?)\s*[?.!]*$",
             out var customerQuery))
             return await InvokeAsync("Customer", "search_customers", new KernelArguments { ["query"] = customerQuery, ["limit"] = 10 }, cancellationToken);
         if (Match(input, @"^(?:find|search|look up)\s+(?:for\s+)?customers?\s+(?:by name or email\s+)?(?<query>.+?)\s*[?.!]*$", out customerQuery))
             return await InvokeAsync("Customer", "search_customers", new KernelArguments { ["query"] = customerQuery, ["limit"] = 10 }, cancellationToken);
 
-        if (Match(input, @"^product\s+(?:id\s*[:#]?\s*)?(?<id>\d+)\s*[?.!]*$", out var productId))
+        if (Match(input, @"^(?:(?:show|get|find|look up)\s+(?:me\s+)?(?:the\s+)?)?product\s+(?:id\s*[:#]?\s*)?(?<id>\d+)\s*[?.!]*$", out var productId))
             return await InvokeAsync("Product", "get_product_by_id", new KernelArguments { ["productId"] = int.Parse(productId) }, cancellationToken);
-        if (Match(input, @"^product\s+sku\s*[:#]?\s*(?<sku>[\w.-]{1,100})\s*[?.!]*$", out var sku))
+        if (Match(input, @"^(?:(?:show|get|find|look up)\s+(?:me\s+)?(?:the\s+)?)?product\s+sku\s*[:#]?\s*(?<sku>[\w.-]{1,100})\s*[?.!]*$", out var sku))
             return await InvokeAsync("Product", "get_product_by_sku", new KernelArguments { ["sku"] = sku }, cancellationToken);
         if (Match(input, @"^(?:find|search|look up)\s+(?:for\s+)?products?\s+(?<query>.+?)\s*[?.!]*$", out var productQuery))
             return await InvokeAsync("Product", "search_products", new KernelArguments { ["query"] = productQuery, ["limit"] = 10 }, cancellationToken);
-        if (Regex.IsMatch(input, @"^list products\s*[?.!]*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+        if (Regex.IsMatch(input, @"^(?:(?:show|list|get)(?:\s+me)?\s+)?(?:all\s+)?products?\s*[?.!]*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
             return await InvokeAsync("Product", "list_products", new KernelArguments { ["limit"] = 10 }, cancellationToken);
 
-        if (Match(input, @"^order\s+id\s*[:#]?\s*(?<id>\d+)\s*[?.!]*$", out var orderId))
+        if (Match(input, @"^(?:(?:show|get|find|look up)\s+(?:me\s+)?(?:the\s+)?)?order\s+(?:id\s*[:#]?\s*)?(?<id>\d+)\s*[?.!]*$", out var orderId))
             return await InvokeAsync("Order", "get_order_by_id", new KernelArguments { ["orderId"] = int.Parse(orderId) }, cancellationToken);
         if (Match(input, @"^order\s+number\s*[:#]?\s*(?<number>[\w.-]{2,50})\s*[?.!]*$", out var orderNumber))
             return await InvokeAsync("Order", "search_orders", new KernelArguments { ["orderNumber"] = orderNumber, ["limit"] = 10 }, cancellationToken);
         if (Match(input, @"^(?:find|search|look up)\s+(?:for\s+)?orders?\s+(?<query>.+?)\s*[?.!]*$", out var orderQuery))
             return await InvokeAsync("Order", "search_orders", new KernelArguments { ["orderNumber"] = orderQuery, ["limit"] = 10 }, cancellationToken);
-        if (Regex.IsMatch(input, @"^list (?:recent )?orders\s*[?.!]*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+        if (Regex.IsMatch(input, @"^(?:(?:show|list|get)(?:\s+me)?\s+)?(?:(?:recent|latest)\s+)?orders\s*[?.!]*$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
             return await InvokeAsync("Order", "list_recent_orders", new KernelArguments { ["limit"] = 10 }, cancellationToken);
 
         return null;
@@ -221,12 +234,23 @@ public sealed class BusinessAssistantService(
 
     private static bool IsRegisteredCustomersQuery(string input)
     {
-        var registrationPhrase = Regex.IsMatch(input, @"\bregistered\s+(?:users|customers)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        var registrationPhrase = Regex.IsMatch(input, @"\b(?:registered\s+(?:users|customers)|(?:users|customers)\s+(?:who\s+)?(?:registered|signed\s+up))\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
         var lastMonthPhrase = Regex.IsMatch(input, @"\b(?:last|previous)\s+month\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
         var explicitMonth = Regex.IsMatch(input,
             @"\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\b",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
         return registrationPhrase && (lastMonthPhrase || explicitMonth || Regex.IsMatch(input, @"\bthis\s+month\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant));
+    }
+
+    private static string NormalizeLookupInput(string input)
+    {
+        var normalized = Regex.Replace(input.Trim(), @"\s+", " ");
+        normalized = Regex.Replace(normalized,
+            @"^(?:(?:hi|hello)[,!]?\s+)?(?:(?:please|kindly)\s+)?(?:(?:can|could|would)\s+you\s+|(?:i'd|i would)\s+like\s+you\s+to\s+|(?:i want|i need)\s+you\s+to\s+|(?:tell|show)\s+me\s+|(?:please\s+)?(?:help\s+me\s+to\s+))",
+            string.Empty,
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        normalized = Regex.Replace(normalized, @"\s*[?.!]+\s*$", string.Empty);
+        return normalized.Trim();
     }
 
     private static (int Year, int Month) GetRequestedMonth(string input)

@@ -114,8 +114,17 @@ namespace AiBusinessAssistant.Repositories.Implementations
             if (await _context.Orders.AnyAsync(existing => existing.OrderNumber == order.OrderNumber))
                 throw new ApiConflictException($"Order number '{order.OrderNumber}' already exists.");
 
+            var trackedProducts = new Dictionary<int, Product>();
             foreach (var product in products.Values)
-                _context.Products.Attach(product);
+            {
+                var trackedProduct = _context.Products.Local.FirstOrDefault(candidate => candidate.ProductId == product.ProductId);
+                if (trackedProduct is null)
+                {
+                    _context.Products.Attach(product);
+                    trackedProduct = product;
+                }
+                trackedProducts[product.ProductId] = trackedProduct;
+            }
 
             foreach (var (productId, requestedQuantity) in requestedQuantities)
             {
@@ -149,8 +158,8 @@ namespace AiBusinessAssistant.Repositories.Implementations
             {
                 if (item.ProductId <= 0 || item.Quantity <= 0)
                     throw new ApiValidationException("Every order item must have a valid product and a quantity greater than zero.");
-                item.Product = products[item.ProductId];
-                item.UnitPrice = item.Product.UnitPrice;
+                item.Product = trackedProducts[item.ProductId];
+                item.UnitPrice = products[item.ProductId].UnitPrice;
             }
 
             try

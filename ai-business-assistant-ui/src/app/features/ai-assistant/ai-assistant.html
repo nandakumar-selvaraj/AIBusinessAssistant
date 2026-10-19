@@ -14,7 +14,7 @@
     <span class="assistant-icon"><i class="bi bi-robot"></i></span>
     <div class="min-w-0">
       <h2 class="h6 fw-bold mb-1">Business Assistant</h2>
-      <p class="small text-secondary mb-0">Read-only access to your business records</p>
+      <p class="small text-secondary mb-0">Business lookups and confirmed order placement</p>
     </div>
     @if (conversationId()) {
       <span class="conversation-label ms-auto">Conversation #{{ conversationId() }}</span>
@@ -45,7 +45,65 @@
             <div class="message-bubble user-bubble">{{ message.content }}</div>
           } @else {
             <div class="message-bubble assistant-bubble response-card">
-              @if (message.products) {
+              @if (message.orderWorkflow; as workflow) {
+                <p class="mb-3">{{ workflow.assistantMessage }}</p>
+                @if (workflow.state === 'SelectingCustomer') {
+                  <div class="d-flex flex-wrap gap-2" aria-label="Choose customer">
+                    @for (customer of workflow.availableCustomers; track customer.customerId) {
+                      <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="sending()" (click)="selectOrderCustomer(customer.customerId)">{{ customer.name }}</button>
+                    } @empty {
+                      <p class="small text-secondary mb-0">No customers are available.</p>
+                    }
+                  </div>
+                }
+                @if (workflow.state === 'SelectingProducts') {
+                  <section class="workflow-products" aria-label="Select products and quantities">
+                    @for (product of workflow.availableProducts; track product.productId) {
+                      <div class="workflow-product-row">
+                        <div class="min-w-0"><strong>{{ product.name }}</strong><div class="small text-secondary">{{ product.sku }} · {{ product.unitPrice | currency }} · {{ product.stockQuantity }} in stock</div></div>
+                        <label class="small d-flex align-items-center gap-2">Qty
+                          <input class="form-control form-control-sm workflow-quantity" type="number" min="0" [max]="product.stockQuantity" step="1" [disabled]="sending()" [ngModel]="orderQuantities[product.productId] ?? 0" [ngModelOptions]="{standalone:true}" (ngModelChange)="setOrderQuantity(product.productId, $event)" [attr.aria-label]="'Quantity for ' + product.name">
+                        </label>
+                      </div>
+                    } @empty {
+                      <p class="small text-secondary mb-0">No products are currently available to order.</p>
+                    }
+                    <div class="d-flex flex-wrap gap-2 mt-3">
+                      <button type="button" class="btn btn-primary btn-sm" [disabled]="sending() || !workflow.availableProducts.length" (click)="reviewOrder()">Review order</button>
+                      <button type="button" class="btn btn-outline-secondary btn-sm" [disabled]="sending()" (click)="cancelOrder()">Cancel</button>
+                    </div>
+                  </section>
+                }
+                @if (workflow.state === 'AwaitingConfirmation') {
+                  <section class="workflow-summary mt-3" aria-label="Order summary">
+                    <h3 class="h6 fw-bold">Order summary · {{ workflow.selectedCustomer?.name }}</h3>
+                    @for (item of workflow.selectedItems; track item.productId) {
+                      <div class="workflow-summary-row">
+                        <div class="min-w-0"><strong>{{ item.name }}</strong><div class="small text-secondary">{{ item.unitPrice | currency }} each · line total {{ item.lineTotal | currency }}</div></div>
+                        <span class="workflow-readonly-quantity" [attr.aria-label]="'Selected quantity ' + item.quantity">Qty {{ item.quantity }}</span>
+                        @if (item.isAvailable && item.stockAvailable >= item.quantity) {
+                          <span class="small text-success"><i class="bi bi-check-circle me-1" aria-hidden="true"></i>In stock: {{ item.stockAvailable }}</span>
+                        } @else {
+                          <span class="small text-danger"><i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>Need {{ item.quantity }}, available {{ item.stockAvailable }}</span>
+                        }
+                      </div>
+                    } @empty { <p class="small text-secondary">Choose one or more products to review.</p> }
+                    <div class="d-flex justify-content-between border-top pt-2 mt-2 fw-bold"><span>Total</span><span>{{ workflow.orderTotal | currency }}</span></div>
+                    <div class="d-flex flex-wrap gap-2 mt-3">
+                      <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="sending()" (click)="editOrderItems()">Edit items</button>
+                      <button type="button" class="btn btn-success btn-sm" [disabled]="sending() || !canConfirmOrder(workflow)" (click)="confirmOrder()">Confirm order</button>
+                      <button type="button" class="btn btn-outline-secondary btn-sm" [disabled]="sending()" (click)="cancelOrder()">Cancel order</button>
+                    </div>
+                  </section>
+                }
+                @if (workflow.state === 'Completed') {
+                  <div class="alert alert-success mt-2 mb-2" role="status">Order #{{ workflow.orderId }} placed. {{ workflow.orderNumber }}</div>
+                  <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="sending()" (click)="startAnotherOrder()">Place another order</button>
+                }
+                @if (workflow.state === 'Cancelled') {
+                  <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="sending()" (click)="startAnotherOrder()">Start a new order</button>
+                }
+              } @else if (message.products) {
                 <section class="bai-card assistant-products-card">
                   <div class="assistant-products-heading">
                     <div><h2 class="h6 fw-bold mb-1">Products</h2><span class="small text-secondary">{{ message.products.length }} {{ message.products.length === 1 ? 'product' : 'products' }}</span></div>
@@ -120,4 +178,4 @@
   </form>
 </section>
 
-<p class="read-only-note small text-secondary mt-3"><i class="bi bi-shield-check me-1"></i>The assistant can look up records but cannot create or change customers, products, orders, prices, or stock.</p>
+<p class="read-only-note small text-secondary mt-3"><i class="bi bi-shield-check me-1"></i>The assistant can look up records. Order creation is available only through the explicit review and confirmation workflow.</p>

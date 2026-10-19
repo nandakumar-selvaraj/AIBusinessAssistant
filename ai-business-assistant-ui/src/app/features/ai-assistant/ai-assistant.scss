@@ -74,6 +74,15 @@
 .json-output { max-height: 300px; margin: 0; padding: .7rem; overflow: auto; color: #0f172a; background: #fff; border: 1px solid #dbe3ed; border-radius: .45rem; font-size: .78rem; white-space: pre-wrap; overflow-wrap: anywhere; }
 .message-time { margin: .25rem .35rem 0; color: var(--bai-muted); font-size: .7rem; }
 
+.workflow-products,
+.workflow-summary { padding: .75rem; background: #fff; border: 1px solid #dbe3ed; border-radius: .65rem; }
+.workflow-product-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .6rem 0; border-bottom: 1px solid #e2e8f0; }
+.workflow-product-row:last-of-type { border-bottom: 0; }
+.workflow-quantity { width: 5.25rem; }
+.workflow-summary-row { display: grid; grid-template-columns: minmax(8rem, 1fr) auto minmax(7rem, auto); align-items: center; gap: .75rem; padding: .65rem 0; border-bottom: 1px solid #e2e8f0; }
+.workflow-summary-row:last-of-type { border-bottom: 0; }
+.workflow-readonly-quantity { padding: .25rem .55rem; color: #334155; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: .4rem; font-size: .8rem; font-weight: 650; white-space: nowrap; }
+
 .typing-indicator { display: flex; gap: .25rem; align-items: center; min-height: 2.5rem; }
 .typing-indicator span { width: .4rem; height: .4rem; background: #64748b; border-radius: 50%; }
 
@@ -90,6 +99,7 @@
   .message-list { max-height: calc(100vh - 450px); padding-inline: .8rem; }
   .message-content { max-width: 88%; }
   .response-card { min-width: min(300px, 78vw); }
+  .workflow-summary-row { grid-template-columns: 1fr auto; }
   .chat-header { padding-inline: .9rem; }
   .conversation-label { display: none; }
   .composer { padding-inline: .65rem; }

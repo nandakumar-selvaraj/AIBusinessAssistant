@@ -30,6 +30,7 @@ namespace AiBusinessAssistant.Extensions
             services.AddScoped<OrderPlugin>();
             services.AddSingleton<ConversationLockProvider>();
             services.AddScoped<IBusinessAssistantService, BusinessAssistantService>();
+            services.AddScoped<IOrderWorkflowService, OrderWorkflowService>();
 
             return services;
         }

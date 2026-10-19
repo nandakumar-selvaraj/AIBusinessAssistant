@@ -1,9 +1,9 @@
-import { DatePipe } from '@angular/common';
+import { CurrencyPipe, DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { BusinessApi } from '../../core/services/business-api';
-import { ChatRequest } from '../../core/models/chat.model';
+import { ChatRequest, OrderWorkflowActionRequest, OrderWorkflowResponse } from '../../core/models/chat.model';
 import { Order } from '../../core/models/order.model';
 import { Customer } from '../../core/models/customer.model';
 import { Product } from '../../core/models/product.model';
@@ -22,17 +22,18 @@ interface ChatEntry {
   orders?: Order[];
   customers?: Customer[];
   products?: Product[];
+  orderWorkflow?: OrderWorkflowResponse;
 }
 
 const MAX_MESSAGE_LENGTH = 4000;
 
 @Component({
   selector: 'app-ai-assistant',
-  imports: [FormsModule, DatePipe, OrderItemsList, CustomerList, ProductList],
+  imports: [FormsModule, DatePipe, CurrencyPipe, OrderItemsList, CustomerList, ProductList],
   templateUrl: './ai-assistant.html',
   styleUrl: './ai-assistant.scss',
 })
-export class AiAssistant {
+export class AiAssistant implements OnInit {
   private readonly api = inject(BusinessApi);
 
   protected readonly messages = signal<ChatEntry[]>([]);
@@ -41,6 +42,7 @@ export class AiAssistant {
   protected readonly error = signal('');
   protected readonly maxMessageLength = MAX_MESSAGE_LENGTH;
   protected draft = '';
+  protected orderQuantities: Record<number, number> = {};
 
   protected readonly suggestions = [
     'Show me all customers',
@@ -50,7 +52,22 @@ export class AiAssistant {
     'Top 5 orders of the month',
     'List pending orders',
     'Active products with 5 or fewer units in stock',
+    'Place an order',
   ];
+
+  ngOnInit(): void {
+    const savedConversationId = Number(sessionStorage.getItem('bai-active-conversation'));
+    if (!Number.isInteger(savedConversationId) || savedConversationId <= 0) return;
+    this.conversationId.set(savedConversationId);
+    this.api.activeOrderWorkflow(savedConversationId).subscribe({
+      next: (workflow) => {
+        if (!workflow) return;
+        this.loadOrderQuantities(workflow);
+        this.messages.set([{ role: 'assistant', content: workflow.assistantMessage, createdAt: new Date(), orderWorkflow: workflow }]);
+      },
+      error: () => sessionStorage.removeItem('bai-active-conversation'),
+    });
+  }
 
   protected send(): void {
     const message = this.draft.trim();
@@ -72,7 +89,9 @@ export class AiAssistant {
     this.api.chat(request).subscribe({
       next: (response) => {
         this.conversationId.set(response.conversationId);
-        this.messages.update((entries) => [...entries, this.toAssistantEntry(response.assistantMessage, new Date(response.createdAt), message)]);
+        sessionStorage.setItem('bai-active-conversation', String(response.conversationId));
+        this.messages.update((entries) => [...entries, this.toAssistantEntry(response.assistantMessage, new Date(response.createdAt), message, response.orderWorkflow ?? undefined)]);
+        if (response.orderWorkflow) this.loadOrderQuantities(response.orderWorkflow);
         this.sending.set(false);
       },
       error: (response: HttpErrorResponse) => {
@@ -86,8 +105,10 @@ export class AiAssistant {
     if (this.sending()) return;
     this.messages.set([]);
     this.conversationId.set(null);
+    sessionStorage.removeItem('bai-active-conversation');
     this.error.set('');
     this.draft = '';
+    this.orderQuantities = {};
   }
 
   protected useSuggestion(suggestion: string): void {
@@ -101,7 +122,57 @@ export class AiAssistant {
     }
   }
 
-  private toAssistantEntry(content: string, createdAt: Date, prompt: string): ChatEntry {
+  protected selectOrderCustomer(customerId: number): void {
+    this.runOrderAction({ action: 'SelectCustomer', customerId });
+  }
+
+  protected setOrderQuantity(productId: number, quantity: number | string): void {
+    const parsed = Number(quantity);
+    this.orderQuantities[productId] = Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
+  }
+
+  protected reviewOrder(): void {
+    const items = Object.entries(this.orderQuantities)
+      .filter(([, quantity]) => Number.isInteger(quantity) && quantity > 0)
+      .map(([productId, quantity]) => ({ productId: Number(productId), quantity }));
+    this.runOrderAction({ action: 'SetOrderItems', items });
+  }
+
+  protected confirmOrder(): void { this.runOrderAction({ action: 'ConfirmOrder' }); }
+  protected editOrderItems(): void { this.runOrderAction({ action: 'EditOrderItems' }); }
+  protected canConfirmOrder(workflow: OrderWorkflowResponse): boolean {
+    return workflow.selectedItems.length > 0 && workflow.selectedItems.every((item) =>
+      item.isAvailable && item.stockAvailable >= item.quantity);
+  }
+  protected cancelOrder(): void { this.runOrderAction({ action: 'CancelWorkflow' }); }
+  protected startAnotherOrder(): void { this.runOrderAction({ action: 'StartPlaceOrder' }); }
+
+  private runOrderAction(action: OrderWorkflowActionRequest): void {
+    const conversationId = this.conversationId();
+    if (conversationId === null || this.sending()) return;
+    this.error.set('');
+    this.sending.set(true);
+    this.api.orderWorkflowAction(conversationId, action).subscribe({
+      next: (workflow) => {
+        this.messages.update((entries) => [...entries, {
+          role: 'assistant', content: workflow.assistantMessage, createdAt: new Date(), orderWorkflow: workflow,
+        }]);
+        this.loadOrderQuantities(workflow);
+        this.sending.set(false);
+      },
+      error: (response: HttpErrorResponse) => {
+        this.error.set(this.errorMessage(response));
+        this.sending.set(false);
+      },
+    });
+  }
+
+  private loadOrderQuantities(workflow: OrderWorkflowResponse): void {
+    this.orderQuantities = Object.fromEntries(workflow.selectedItems.map((item) => [item.productId, item.quantity]));
+  }
+
+  private toAssistantEntry(content: string, createdAt: Date, prompt: string, orderWorkflow?: OrderWorkflowResponse): ChatEntry {
+    if (orderWorkflow) return { role: 'assistant', content, createdAt, orderWorkflow };
     const data = this.parseAssistantContent(content);
     const isCustomerQuery = /\bcustomers?\b/i.test(prompt) && !/\bregistered\s+customers?\b/i.test(prompt);
     const isProductQuery = /\bproducts?\b/i.test(prompt);

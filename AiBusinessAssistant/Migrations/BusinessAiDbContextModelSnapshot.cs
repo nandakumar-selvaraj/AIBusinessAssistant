@@ -154,6 +154,52 @@ namespace AiBusinessAssistant.Migrations
                     b.ToTable("OrderItems");
                 });
 
+            modelBuilder.Entity("AiBusinessAssistant.Entities.OrderWorkflow", b =>
+                {
+                    b.Property<int>("ConversationId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("CreatedOrderId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("CustomerId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("OrderNumber")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("ConversationId");
+
+                    b.ToTable("OrderWorkflows");
+                });
+
+            modelBuilder.Entity("AiBusinessAssistant.Entities.OrderWorkflowItem", b =>
+                {
+                    b.Property<int>("ConversationId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("ConversationId", "ProductId");
+
+                    b.ToTable("OrderWorkflowItems");
+                });
+
             modelBuilder.Entity("AiBusinessAssistant.Entities.Product", b =>
                 {
                     b.Property<int>("ProductId")
@@ -232,6 +278,24 @@ namespace AiBusinessAssistant.Migrations
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("AiBusinessAssistant.Entities.OrderWorkflow", b =>
+                {
+                    b.HasOne("AiBusinessAssistant.Entities.ChatConversation", null)
+                        .WithOne()
+                        .HasForeignKey("AiBusinessAssistant.Entities.OrderWorkflow", "ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("AiBusinessAssistant.Entities.OrderWorkflowItem", b =>
+                {
+                    b.HasOne("AiBusinessAssistant.Entities.OrderWorkflow", null)
+                        .WithMany("Items")
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("AiBusinessAssistant.Entities.ChatConversation", b =>
                 {
                     b.Navigation("ChatMessages");
@@ -245,6 +309,11 @@ namespace AiBusinessAssistant.Migrations
             modelBuilder.Entity("AiBusinessAssistant.Entities.Order", b =>
                 {
                     b.Navigation("OrderItems");
+                });
+
+            modelBuilder.Entity("AiBusinessAssistant.Entities.OrderWorkflow", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("AiBusinessAssistant.Entities.Product", b =>
