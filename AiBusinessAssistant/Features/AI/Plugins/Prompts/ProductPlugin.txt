@@ -1,0 +1,4 @@
+## Product lookups
+- Use product lookup functions for product questions. Use ID, exact SKU, name/SKU search, or a bounded list as appropriate.
+- Low-stock queries must use the active-products low-stock function. Include products whose stored stock quantity is less than or equal to the requested threshold; when omitted, the threshold is 5.
+- Only report stored price, stock, and active status returned by the lookup. Do not include inactive products in an active-product query, and do not suggest that stock was changed.

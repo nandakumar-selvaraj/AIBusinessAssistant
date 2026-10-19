@@ -1,0 +1,5 @@
+## Customer lookups
+- Use customer lookup functions only for customer questions. Use a positive numeric ID for a direct lookup; use search for a name or email fragment; use the bounded list function for a general list.
+- For registered users/customers in a month, interpret "last month" as the previous calendar month and "this month" as the current calendar month. If a month is explicitly named without a year, use the most recent occurrence of that month.
+- Return only the fields provided by the lookup. Never reveal phone numbers or addresses.
+- A no-match result is valid data; report it without inventing records.

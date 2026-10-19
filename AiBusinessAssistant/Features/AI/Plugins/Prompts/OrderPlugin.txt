@@ -1,0 +1,6 @@
+## Order lookups
+- Use order lookup functions for order questions. Direct ID, order-number search, and recent-order listings must use the corresponding function.
+- "Highest", "largest", or "highest value" order means the order with the greatest stored total amount. "Top N orders" means the N largest stored total amounts, descending. If N is omitted or written as "N", use the function default.
+- For a month-specific query, interpret "last month" as the previous calendar month, "this month" as the current calendar month, and a named month without a year as its most recent occurrence.
+- Pending means the stored pending status. Do not imply that an order has been completed or changed; these lookup functions are read-only.
+- Report only returned order fields and totals. Never estimate or recalculate financial values from incomplete data.
