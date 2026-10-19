@@ -21,6 +21,28 @@ namespace AiBusinessAssistant.Services.Implementations
             return products.Select(p => MapToDto(p));
         }
 
+        public async Task<IEnumerable<ProductDto>> GetTopAsync(int limit)
+        {
+            ValidateLimit(limit);
+            return (await _productRepository.GetTopAsync(limit)).Select(MapToDto);
+        }
+
+        public async Task<IEnumerable<ProductDto>> SearchAsync(string query, int limit)
+        {
+            ValidateLimit(limit);
+            if (string.IsNullOrWhiteSpace(query) || query.Trim().Length is < 2 or > 100)
+                throw new ApiValidationException("Product search text must be between 2 and 100 characters.");
+            return (await _productRepository.SearchAsync(query.Trim(), limit)).Select(MapToDto);
+        }
+
+        public async Task<IEnumerable<ProductDto>> GetActiveLowStockAsync(int stockThreshold, int limit)
+        {
+            ValidateLimit(limit);
+            if (stockThreshold is < 0 or > 100000)
+                throw new ApiValidationException("Stock threshold must be between 0 and 100000.");
+            return (await _productRepository.GetActiveLowStockAsync(stockThreshold, limit)).Select(MapToDto);
+        }
+
         public async Task<ProductDto?> GetByIdAsync(int id)
         {
             var product = await _productRepository.GetByIdAsync(id);
@@ -82,6 +104,11 @@ namespace AiBusinessAssistant.Services.Implementations
                 IsActive = p.IsActive,
                 CreatedAt = p.CreatedAt
             };
+        }
+
+        private static void ValidateLimit(int limit)
+        {
+            if (limit is < 1 or > 20) throw new ApiValidationException("Result limit must be between 1 and 20.");
         }
     }
 }

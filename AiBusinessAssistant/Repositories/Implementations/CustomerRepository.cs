@@ -18,6 +18,23 @@ namespace AiBusinessAssistant.Repositories.Implementations
         public async Task<IEnumerable<Customer>> GetAllAsync() =>
             await _context.Customers.Include(c => c.Orders).ToListAsync();
 
+        public async Task<IEnumerable<Customer>> GetTopAsync(int limit) =>
+            await _context.Customers.AsNoTracking().OrderBy(c => c.Name).Take(limit).ToListAsync();
+
+        public async Task<IEnumerable<Customer>> SearchAsync(string query, int limit) =>
+            await _context.Customers.AsNoTracking()
+                .Where(c => EF.Functions.Like(c.Name, $"%{EscapeLike(query)}%", "\\") ||
+                    (c.Email != null && EF.Functions.Like(c.Email, $"%{EscapeLike(query)}%", "\\")))
+                .OrderBy(c => c.Name).Take(limit).ToListAsync();
+
+        public async Task<IEnumerable<Customer>> GetRegisteredBetweenAsync(DateTime startInclusive, DateTime endExclusive, int limit) =>
+            await _context.Customers.AsNoTracking()
+                .Where(customer => customer.CreatedAt >= startInclusive && customer.CreatedAt < endExclusive)
+                .OrderByDescending(customer => customer.CreatedAt).ThenBy(customer => customer.CustomerId)
+                .Take(limit).ToListAsync();
+
+        private static string EscapeLike(string value) => value.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
+
         public async Task<Customer?> GetByIdAsync(int id) =>
             await _context.Customers.Include(c => c.Orders).FirstOrDefaultAsync(c => c.CustomerId == id);
 

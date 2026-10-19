@@ -1,0 +1,111 @@
+<section class="page-heading mb-4 d-flex flex-wrap justify-content-between align-items-end gap-3">
+  <div>
+    <p class="eyebrow mb-1">BUSINESS TOOLS</p>
+    <h1 class="h3 fw-bold mb-1">AI Assistant</h1>
+    <p class="text-secondary mb-0">Ask about customers, products, stock, and orders.</p>
+  </div>
+  <button class="btn btn-outline-secondary btn-sm" type="button" [disabled]="sending() || !messages().length" (click)="startNewConversation()">
+    <i class="bi bi-plus-lg me-1"></i>New conversation
+  </button>
+</section>
+
+<section class="chat-panel bai-card" aria-label="AI Assistant chat">
+  <header class="chat-header">
+    <span class="assistant-icon"><i class="bi bi-robot"></i></span>
+    <div class="min-w-0">
+      <h2 class="h6 fw-bold mb-1">Business Assistant</h2>
+      <p class="small text-secondary mb-0">Read-only access to your business records</p>
+    </div>
+    @if (conversationId()) {
+      <span class="conversation-label ms-auto">Conversation #{{ conversationId() }}</span>
+    }
+  </header>
+
+  <div class="message-list" role="log" aria-live="polite" aria-relevant="additions text">
+    @if (!messages().length) {
+      <div class="welcome-state">
+        <span class="welcome-icon"><i class="bi bi-chat-square-text"></i></span>
+        <h3 class="h5 fw-bold mt-3 mb-2">How can I help?</h3>
+        <p class="text-secondary mb-4">Try a read-only lookup. The assistant uses records from your business database.</p>
+        <div class="suggestions" aria-label="Suggested questions">
+          @for (suggestion of suggestions; track suggestion) {
+            <button type="button" class="suggestion-chip" (click)="useSuggestion(suggestion)">{{ suggestion }}</button>
+          }
+        </div>
+      </div>
+    }
+
+    @for (message of messages(); track $index; let i = $index) {
+      <article class="message-row" [class.user-row]="message.role === 'user'" [class.assistant-row]="message.role === 'assistant'">
+        @if (message.role === 'assistant') {
+          <span class="message-avatar" aria-label="Assistant"><i class="bi bi-robot"></i></span>
+        }
+        <div class="message-content">
+          @if (message.role === 'user') {
+            <div class="message-bubble user-bubble">{{ message.content }}</div>
+          } @else {
+            <div class="message-bubble assistant-bubble response-card">
+              <div class="response-toolbar">
+                <span><i class="bi bi-braces-asterisk me-1"></i>JSON response</span>
+                <button type="button" class="view-toggle" (click)="toggleResponseView(i)">
+                  {{ message.viewMode === 'json' ? 'Grid view' : 'JSON view' }}
+                </button>
+              </div>
+              @if (message.viewMode === 'json') {
+                <pre class="json-output">{{ message.jsonText }}</pre>
+              } @else if (message.isList) {
+                @if (message.gridRows?.length) {
+                  <div class="table-responsive response-grid-wrap">
+                    <table class="table table-sm response-grid mb-0">
+                      <thead><tr>@for (column of message.gridColumns; track column) { <th scope="col">{{ column }}</th> }</tr></thead>
+                      <tbody>@for (row of message.gridRows; track $index) { <tr>@for (cell of row; track $index) { <td>{{ cell }}</td> }</tr> }</tbody>
+                    </table>
+                  </div>
+                } @else {
+                  <p class="small text-secondary mb-0">No records returned.</p>
+                }
+              } @else {
+                <dl class="response-grid mb-0">
+                  @for (row of message.gridRows; track row[0]) {
+                    <div class="response-field"><dt>{{ row[0] }}</dt><dd>{{ row[1] }}</dd></div>
+                  }
+                </dl>
+              }
+            </div>
+          }
+          <time class="message-time" [attr.datetime]="message.createdAt.toISOString()">{{ message.createdAt | date:'shortTime' }}</time>
+        </div>
+      </article>
+    }
+
+    @if (sending()) {
+      <article class="message-row assistant-row" aria-label="Assistant is responding">
+        <span class="message-avatar"><i class="bi bi-robot"></i></span>
+        <div class="message-bubble assistant-bubble typing-indicator"><span></span><span></span><span></span></div>
+      </article>
+    }
+  </div>
+
+  @if (error()) {
+    <div class="alert alert-danger mx-3 mb-2" role="alert">{{ error() }}</div>
+  }
+
+  <form class="composer" (ngSubmit)="send()">
+    <label class="visually-hidden" for="chat-message">Message</label>
+    <div class="composer-box">
+      <textarea id="chat-message" class="form-control" name="message" [(ngModel)]="draft" rows="2" [maxlength]="maxMessageLength" [disabled]="sending()" placeholder="Ask about your business…" (keydown)="onEnter($event)"></textarea>
+      <div class="composer-footer">
+        <span class="small text-secondary">Enter to send · Shift + Enter for a new line</span>
+        <div class="d-flex align-items-center gap-2">
+          <span class="character-count" [class.text-danger]="draft.length > maxMessageLength - 200">{{ draft.length }}/{{ maxMessageLength }}</span>
+          <button class="btn btn-primary send-button" type="submit" [disabled]="sending() || !draft.trim()" aria-label="Send message">
+            @if (sending()) { <span class="spinner-border spinner-border-sm" aria-hidden="true"></span> }
+            @else { <i class="bi bi-arrow-up"></i> }
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+</section>
+
+<p class="read-only-note small text-secondary mt-3"><i class="bi bi-shield-check me-1"></i>The assistant can look up records but cannot create or change customers, products, orders, prices, or stock.</p>

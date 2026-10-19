@@ -29,6 +29,27 @@ namespace AiBusinessAssistant.Services.Implementations
             });
         }
 
+        public async Task<IEnumerable<CustomerDto>> GetTopAsync(int limit)
+        {
+            ValidateLimit(limit);
+            return (await _customerRepository.GetTopAsync(limit)).Select(MapToDto);
+        }
+
+        public async Task<IEnumerable<CustomerDto>> SearchAsync(string query, int limit)
+        {
+            ValidateLimit(limit);
+            if (string.IsNullOrWhiteSpace(query) || query.Trim().Length is < 2 or > 100)
+                throw new ApiValidationException("Customer search text must be between 2 and 100 characters.");
+            return (await _customerRepository.SearchAsync(query.Trim(), limit)).Select(MapToDto);
+        }
+
+        public async Task<IEnumerable<CustomerDto>> GetRegisteredBetweenAsync(DateTime startInclusive, DateTime endExclusive, int limit)
+        {
+            ValidateLimit(limit);
+            if (startInclusive >= endExclusive) throw new ApiValidationException("Registration date range is invalid.");
+            return (await _customerRepository.GetRegisteredBetweenAsync(startInclusive, endExclusive, limit)).Select(MapToDto);
+        }
+
         public async Task<CustomerDto?> GetByIdAsync(int id)
         {
             var c = await _customerRepository.GetByIdAsync(id);
@@ -43,6 +64,21 @@ namespace AiBusinessAssistant.Services.Implementations
                 Address = c.Address,
                 CreatedAt = c.CreatedAt
             };
+        }
+
+        private static CustomerDto MapToDto(Customer c) => new()
+        {
+            CustomerId = c.CustomerId,
+            Name = c.Name,
+            Email = c.Email,
+            Phone = c.Phone,
+            Address = c.Address,
+            CreatedAt = c.CreatedAt
+        };
+
+        private static void ValidateLimit(int limit)
+        {
+            if (limit is < 1 or > 20) throw new ApiValidationException("Result limit must be between 1 and 20.");
         }
 
         public async Task<CustomerDto> CreateAsync(UpsertCustomerDto dto)

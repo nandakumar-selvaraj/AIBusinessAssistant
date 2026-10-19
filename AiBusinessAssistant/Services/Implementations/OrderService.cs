@@ -25,6 +25,40 @@ namespace AiBusinessAssistant.Services.Implementations
             return orders.Select(o => MapToDto(o));
         }
 
+        public async Task<IEnumerable<OrderDto>> GetRecentAsync(int limit)
+        {
+            ValidateLimit(limit);
+            return (await _orderRepository.GetRecentAsync(limit)).Select(MapToDto);
+        }
+
+        public async Task<IEnumerable<OrderDto>> SearchByNumberAsync(string orderNumber, int limit)
+        {
+            ValidateLimit(limit);
+            if (string.IsNullOrWhiteSpace(orderNumber) || orderNumber.Trim().Length is < 2 or > 50)
+                throw new ApiValidationException("Order number search text must be between 2 and 50 characters.");
+            return (await _orderRepository.SearchByNumberAsync(orderNumber.Trim(), limit)).Select(MapToDto);
+        }
+
+        public async Task<OrderDto?> GetHighestValueBetweenAsync(DateTime startInclusive, DateTime endExclusive)
+        {
+            if (startInclusive >= endExclusive) throw new ApiValidationException("Order date range is invalid.");
+            var order = await _orderRepository.GetHighestValueBetweenAsync(startInclusive, endExclusive);
+            return order is null ? null : MapToDto(order);
+        }
+
+        public async Task<IEnumerable<OrderDto>> GetTopValueBetweenAsync(DateTime startInclusive, DateTime endExclusive, int limit)
+        {
+            ValidateLimit(limit);
+            if (startInclusive >= endExclusive) throw new ApiValidationException("Order date range is invalid.");
+            return (await _orderRepository.GetTopValueBetweenAsync(startInclusive, endExclusive, limit)).Select(MapToDto);
+        }
+
+        public async Task<IEnumerable<OrderDto>> GetPendingAsync(int limit)
+        {
+            ValidateLimit(limit);
+            return (await _orderRepository.GetPendingAsync(limit)).Select(MapToDto);
+        }
+
         public async Task<OrderDto?> GetByIdAsync(int id)
         {
             var order = await _orderRepository.GetByIdAsync(id);
@@ -116,6 +150,11 @@ namespace AiBusinessAssistant.Services.Implementations
                     UnitPrice = oi.UnitPrice
                 }).ToList()
             };
+        }
+
+        private static void ValidateLimit(int limit)
+        {
+            if (limit is < 1 or > 20) throw new ApiValidationException("Result limit must be between 1 and 20.");
         }
     }
 }

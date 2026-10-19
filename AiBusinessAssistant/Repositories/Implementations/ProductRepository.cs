@@ -18,6 +18,23 @@ namespace AiBusinessAssistant.Repositories.Implementations
         public async Task<IEnumerable<Product>> GetAllAsync() =>
             await _context.Products.ToListAsync();
 
+        public async Task<IEnumerable<Product>> GetTopAsync(int limit) =>
+            await _context.Products.AsNoTracking().OrderBy(p => p.Name).Take(limit).ToListAsync();
+
+        public async Task<IEnumerable<Product>> SearchAsync(string query, int limit) =>
+            await _context.Products.AsNoTracking()
+                .Where(p => EF.Functions.Like(p.Name, $"%{EscapeLike(query)}%", "\\") ||
+                    EF.Functions.Like(p.SKU, $"%{EscapeLike(query)}%", "\\"))
+                .OrderBy(p => p.Name).Take(limit).ToListAsync();
+
+        public async Task<IEnumerable<Product>> GetActiveLowStockAsync(int stockThreshold, int limit) =>
+            await _context.Products.AsNoTracking()
+                .Where(product => product.IsActive && product.StockQuantity <= stockThreshold)
+                .OrderBy(product => product.StockQuantity).ThenBy(product => product.Name)
+                .Take(limit).ToListAsync();
+
+        private static string EscapeLike(string value) => value.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
+
         public async Task<Product?> GetByIdAsync(int id) =>
             await _context.Products.AsNoTracking().FirstOrDefaultAsync(product => product.ProductId == id);
 

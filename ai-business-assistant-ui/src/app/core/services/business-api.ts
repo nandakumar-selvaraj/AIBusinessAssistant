@@ -6,6 +6,7 @@ import { Customer, CustomerPayload } from '../models/customer.model';
 import { Product, ProductPayload } from '../models/product.model';
 import { Order } from '../models/order.model';
 import { DashboardSummary } from '../models/dashboard.model';
+import { ChatRequest, ChatResponse } from '../models/chat.model';
 
 @Injectable({ providedIn: 'root' })
 export class BusinessApi {
@@ -24,6 +25,7 @@ export class BusinessApi {
   orders(): Observable<Order[]> { return this.http.get<Order[]>(`${API_BASE_URL}/orders`); }
   completeOrder(id: number): Observable<Order> { return this.http.post<Order>(`${API_BASE_URL}/orders/${id}/complete`, {}); }
   dashboardSummary(): Observable<DashboardSummary> { return this.http.get<DashboardSummary>(`${API_BASE_URL}/dashboard/summary`); }
+  chat(request: ChatRequest): Observable<ChatResponse> { return this.http.post<ChatResponse>(`${API_BASE_URL}/chat`, request); }
   createOrder(payload: { orderNumber: string; customerId: number; orderItems: { productId: number; quantity: number }[] }): Observable<Order> { return this.http.post<Order>(`${API_BASE_URL}/orders`, payload); }
   deleteOrder(id: number): Observable<void> { return this.http.delete<void>(`${API_BASE_URL}/orders/${id}`); }
 }

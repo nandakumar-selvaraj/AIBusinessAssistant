@@ -22,6 +22,44 @@ namespace AiBusinessAssistant.Repositories.Implementations
                 .ThenInclude(oi => oi.Product)
                 .ToListAsync();
 
+        public async Task<IEnumerable<Order>> GetRecentAsync(int limit) =>
+            await _context.Orders.AsNoTracking()
+                .Include(o => o.Customer)
+                .Include(o => o.OrderItems).ThenInclude(item => item.Product)
+                .OrderByDescending(o => o.OrderDate).ThenByDescending(o => o.OrderId)
+                .Take(limit).ToListAsync();
+
+        public async Task<IEnumerable<Order>> SearchByNumberAsync(string orderNumber, int limit) =>
+            await _context.Orders.AsNoTracking()
+                .Include(o => o.Customer)
+                .Include(o => o.OrderItems).ThenInclude(item => item.Product)
+                .Where(o => EF.Functions.Like(o.OrderNumber, $"%{EscapeLike(orderNumber)}%", "\\"))
+                .OrderByDescending(o => o.OrderDate).ThenByDescending(o => o.OrderId)
+                .Take(limit).ToListAsync();
+
+        public async Task<Order?> GetHighestValueBetweenAsync(DateTime startInclusive, DateTime endExclusive) =>
+            await OrderQuery()
+                .Where(order => order.OrderDate >= startInclusive && order.OrderDate < endExclusive)
+                .OrderByDescending(order => order.TotalAmount).ThenByDescending(order => order.OrderDate)
+                .ThenByDescending(order => order.OrderId).FirstOrDefaultAsync();
+
+        public async Task<IEnumerable<Order>> GetTopValueBetweenAsync(DateTime startInclusive, DateTime endExclusive, int limit) =>
+            await OrderQuery()
+                .Where(order => order.OrderDate >= startInclusive && order.OrderDate < endExclusive)
+                .OrderByDescending(order => order.TotalAmount).ThenByDescending(order => order.OrderDate)
+                .ThenByDescending(order => order.OrderId).Take(limit).ToListAsync();
+
+        public async Task<IEnumerable<Order>> GetPendingAsync(int limit) =>
+            await OrderQuery().Where(order => order.Status == "Pending")
+                .OrderByDescending(order => order.OrderDate).ThenByDescending(order => order.OrderId)
+                .Take(limit).ToListAsync();
+
+        private IQueryable<Order> OrderQuery() => _context.Orders.AsNoTracking()
+            .Include(order => order.Customer)
+            .Include(order => order.OrderItems).ThenInclude(item => item.Product);
+
+        private static string EscapeLike(string value) => value.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_");
+
         public async Task<Order?> GetByIdAsync(int id) =>
             await _context.Orders
                 .Include(o => o.Customer)

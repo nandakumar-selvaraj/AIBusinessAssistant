@@ -8,6 +8,8 @@
 
   <ItemGroup>
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.2.0" />
+    <PackageReference Include="Microsoft.SemanticKernel.Core" Version="1.81.0" />
+    <PackageReference Include="Microsoft.SemanticKernel.Connectors.Ollama" Version="1.81.0-alpha" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.*">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>

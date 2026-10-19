@@ -23,6 +23,7 @@ builder.Services.AddDbContext<BusinessAiDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddApplicationServices(); // Register application services
+builder.Services.AddBusinessAssistant(builder.Configuration);
 
 var app = builder.Build();
 
