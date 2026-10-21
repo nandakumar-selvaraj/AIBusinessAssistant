@@ -1,59 +1,41 @@
-# AiBusinessAssistantUi
+# AI Business Assistant UI
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 22.2.0.
+Angular 22 dashboard for managing customers, products, and orders, with a chat based business assistant. The UI calls the .NET API through the `/api` path.
 
-## Development server
+## Requirements
 
-To start a local development server, run:
+- Node.js and npm (the repository uses npm 11)
+- The AI Business Assistant API running locally
 
-```bash
-ng serve
-```
+## Install and run
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+From this directory:
 
 ```bash
-ng generate component component-name
+npm install
+npm start
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+Open [http://localhost:4200](http://localhost:4200). The Angular development server proxies `/api` requests to `https://localhost:7152`, as configured in `proxy.conf.json`. Start the API with its HTTPS launch profile, or update the proxy target to match the API URL.
+
+## Build
 
 ```bash
-ng generate --help
+npm run build
 ```
 
-## Building
+Production build output is written under `dist/`.
 
-To build the project run:
+## Unit tests
+
+Run the UI unit tests once with:
 
 ```bash
-ng build
+npm test -- --watch=false
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+The test runner uses Vitest with jsdom.
 
-## Running unit tests
+## API URL configuration
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
-```
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+The UI uses the `/api` base path defined in `src/app/core/api.config.ts`. In development, `proxy.conf.json` forwards those requests to the API. For another deployment layout, configure the API base URL and the appropriate server routing or proxy together.
