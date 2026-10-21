@@ -48,7 +48,8 @@ namespace AiBusinessAssistant.Extensions
                 .Validate(options => options.RequestTimeoutSeconds is >= 1 and <= 600, "Ollama:RequestTimeoutSeconds must be between 1 and 600.")
                 .ValidateOnStart();
 
-            var ollama = configuration.GetSection(OllamaOptions.SectionName).Get<OllamaOptions>() ?? new OllamaOptions();
+            var ollama = configuration.GetRequiredSection(OllamaOptions.SectionName).Get<OllamaOptions>()
+                ?? throw new InvalidOperationException($"Configuration section '{OllamaOptions.SectionName}' is required.");
 #pragma warning disable SKEXP0070
             services.AddKernel().AddOllamaChatCompletion(
                 modelId: ollama.ModelId,

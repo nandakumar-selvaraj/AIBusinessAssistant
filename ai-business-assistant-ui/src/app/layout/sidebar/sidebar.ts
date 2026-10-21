@@ -27,7 +27,7 @@ export class Sidebar {
 
   protected readonly secondaryMenu: NavItem[] = [
     { label: 'AI Assistant', path: '/ai-assistant', icon: 'bi-robot' },
-    { label: 'Settings', path: '/settings', icon: 'bi-gear' },
+    // { label: 'Settings', path: '/settings', icon: 'bi-gear' },
   ];
 
   protected toggle(): void {
