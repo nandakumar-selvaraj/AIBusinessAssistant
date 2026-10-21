@@ -58,17 +58,27 @@ public sealed class BusinessAssistantService(
 
         string assistantText;
         OrderWorkflowResponseDto? workflowResponse = null;
+        OrderWorkflowResponseDto? pendingWorkflowResponse = null;
         try
         {
-            if (Regex.IsMatch(message, @"\b(?:place|create|start|make)\s+(?:an?\s+)?orders?\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
+            workflowResponse = await orderWorkflow.GetActiveAsync(conversation.ConversationId, cancellationToken);
+            if (workflowResponse is not null)
+            {
+                assistantText = workflowResponse.AssistantMessage;
+            }
+            else if (Regex.IsMatch(message, @"\b(?:place|create|start|make)\s+(?:an?\s+)?orders?\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
             {
                 workflowResponse = await orderWorkflow.StartAsync(conversation.ConversationId, cancellationToken);
                 assistantText = workflowResponse.AssistantMessage;
             }
+            else if (IsPendingOrdersRequest(message))
+            {
+                pendingWorkflowResponse = await orderWorkflow.StartPendingCompletionAsync(conversation.ConversationId, cancellationToken);
+                assistantText = pendingWorkflowResponse.AssistantMessage;
+            }
             else
             {
-                workflowResponse = await orderWorkflow.GetActiveAsync(conversation.ConversationId, cancellationToken);
-                assistantText = workflowResponse?.AssistantMessage ?? await GenerateResponseAsync(conversation.ConversationId, cancellationToken);
+                assistantText = await GenerateResponseAsync(conversation.ConversationId, cancellationToken);
             }
             if (string.IsNullOrWhiteSpace(assistantText))
                 assistantText = "I couldn't generate a response. Please rephrase your question and try again.";
@@ -105,9 +115,14 @@ public sealed class BusinessAssistantService(
             UserMessage = message,
             AssistantMessage = assistantText,
             CreatedAt = createdAt,
-            OrderWorkflow = workflowResponse
+            OrderWorkflow = workflowResponse?.WorkflowKind == "PlaceOrder" ? workflowResponse : null,
+            PendingOrderWorkflow = workflowResponse?.WorkflowKind == "PendingOrderCompletion" ? workflowResponse : pendingWorkflowResponse
         };
     }
+
+    private static bool IsPendingOrdersRequest(string message) => Regex.IsMatch(message,
+        @"\b(?:pending|unfulfilled)\s+orders?\b|\borders?\s+(?:that\s+are\s+)?pending\b",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     private async Task<string> GenerateResponseAsync(int conversationId, CancellationToken cancellationToken)
     {

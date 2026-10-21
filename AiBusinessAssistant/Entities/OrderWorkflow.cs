@@ -10,6 +10,7 @@ public sealed class OrderWorkflow
     public string State { get; set; } = "Idle";
     public int? CustomerId { get; set; }
     public int? CreatedOrderId { get; set; }
+    public int? SelectedOrderId { get; set; }
     [Required]
     public string OrderNumber { get; set; } = string.Empty;
     [Required]

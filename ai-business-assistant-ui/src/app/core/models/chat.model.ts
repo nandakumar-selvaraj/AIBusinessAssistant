@@ -1,3 +1,5 @@
+import { Order } from './order.model';
+
 export interface ChatRequest {
   conversationId?: number;
   message: string;
@@ -9,17 +11,20 @@ export interface ChatResponse {
   assistantMessage: string;
   createdAt: string;
   orderWorkflow?: OrderWorkflowResponse | null;
+  pendingOrderWorkflow?: OrderWorkflowResponse | null;
 }
 
 export interface OrderWorkflowActionRequest {
-  action: 'StartPlaceOrder' | 'SelectCustomer' | 'SetOrderItems' | 'EditOrderItems' | 'ConfirmOrder' | 'CancelWorkflow';
+  action: 'StartPlaceOrder' | 'SelectCustomer' | 'SetOrderItems' | 'EditOrderItems' | 'ConfirmOrder' | 'CancelWorkflow' | 'ShowPendingOrders' | 'SelectPendingOrder' | 'ConfirmCompletion';
   customerId?: number;
+  orderId?: number;
   items?: { productId: number; quantity: number }[];
 }
 
 export interface OrderWorkflowResponse {
   conversationId: number;
-  state: 'Idle' | 'SelectingCustomer' | 'SelectingProducts' | 'AwaitingConfirmation' | 'Completed' | 'Cancelled';
+  workflowKind: 'PlaceOrder' | 'PendingOrderCompletion';
+  state: 'Idle' | 'SelectingCustomer' | 'SelectingProducts' | 'AwaitingConfirmation' | 'ListingPendingOrders' | 'ReviewingPendingOrders' | 'AwaitingCompletionConfirmation' | 'Completed' | 'Cancelled';
   assistantMessage: string;
   selectedCustomer: { customerId: number; name: string } | null;
   availableCustomers: { customerId: number; name: string }[];
@@ -29,4 +34,7 @@ export interface OrderWorkflowResponse {
   availableActions: string[];
   orderId: number | null;
   orderNumber: string | null;
+  pendingOrders: Order[];
+  selectedPendingOrder: Order | null;
+  completedOrder: Order | null;
 }

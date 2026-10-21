@@ -43,6 +43,7 @@ export class AiAssistant implements OnInit {
   protected readonly maxMessageLength = MAX_MESSAGE_LENGTH;
   protected draft = '';
   protected orderQuantities: Record<number, number> = {};
+  protected expandedPendingOrders: Record<number, boolean> = {};
 
   protected readonly suggestions = [
     'Show me all customers',
@@ -90,8 +91,9 @@ export class AiAssistant implements OnInit {
       next: (response) => {
         this.conversationId.set(response.conversationId);
         sessionStorage.setItem('bai-active-conversation', String(response.conversationId));
-        this.messages.update((entries) => [...entries, this.toAssistantEntry(response.assistantMessage, new Date(response.createdAt), message, response.orderWorkflow ?? undefined)]);
-        if (response.orderWorkflow) this.loadOrderQuantities(response.orderWorkflow);
+        const workflow = response.pendingOrderWorkflow ?? response.orderWorkflow;
+        this.messages.update((entries) => [...entries, this.toAssistantEntry(response.assistantMessage, new Date(response.createdAt), message, workflow ?? undefined)]);
+        if (workflow) this.loadOrderQuantities(workflow);
         this.sending.set(false);
       },
       error: (response: HttpErrorResponse) => {
@@ -146,6 +148,16 @@ export class AiAssistant implements OnInit {
   }
   protected cancelOrder(): void { this.runOrderAction({ action: 'CancelWorkflow' }); }
   protected startAnotherOrder(): void { this.runOrderAction({ action: 'StartPlaceOrder' }); }
+  protected refreshPendingOrders(): void { this.runOrderAction({ action: 'ShowPendingOrders' }); }
+  protected selectPendingOrder(orderId: number): void { this.runOrderAction({ action: 'SelectPendingOrder', orderId }); }
+  protected confirmCompletion(workflow: OrderWorkflowResponse): void {
+    const orderId = workflow.selectedPendingOrder?.orderId;
+    if (orderId) this.runOrderAction({ action: 'ConfirmCompletion', orderId });
+  }
+  protected cancelCompletion(): void { this.runOrderAction({ action: 'CancelWorkflow' }); }
+  protected togglePendingOrder(orderId: number): void {
+    this.expandedPendingOrders[orderId] = !this.expandedPendingOrders[orderId];
+  }
 
   private runOrderAction(action: OrderWorkflowActionRequest): void {
     const conversationId = this.conversationId();
@@ -168,7 +180,7 @@ export class AiAssistant implements OnInit {
   }
 
   private loadOrderQuantities(workflow: OrderWorkflowResponse): void {
-    this.orderQuantities = Object.fromEntries(workflow.selectedItems.map((item) => [item.productId, item.quantity]));
+    this.orderQuantities = Object.fromEntries((workflow.selectedItems ?? []).map((item) => [item.productId, item.quantity]));
   }
 
   private toAssistantEntry(content: string, createdAt: Date, prompt: string, orderWorkflow?: OrderWorkflowResponse): ChatEntry {

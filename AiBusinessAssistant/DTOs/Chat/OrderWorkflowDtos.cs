@@ -1,9 +1,12 @@
+using AiBusinessAssistant.DTOs.Order;
+
 namespace AiBusinessAssistant.DTOs.Chat;
 
 public sealed class OrderWorkflowActionRequestDto
 {
     public string Action { get; set; } = string.Empty;
     public int? CustomerId { get; set; }
+    public int? OrderId { get; set; }
     public List<OrderWorkflowItemRequestDto>? Items { get; set; }
 }
 
@@ -16,6 +19,7 @@ public sealed class OrderWorkflowItemRequestDto
 public sealed class OrderWorkflowResponseDto
 {
     public int ConversationId { get; set; }
+    public string WorkflowKind { get; set; } = "PlaceOrder";
     public string State { get; set; } = "Idle";
     public string AssistantMessage { get; set; } = string.Empty;
     public OrderWorkflowCustomerDto? SelectedCustomer { get; set; }
@@ -26,6 +30,9 @@ public sealed class OrderWorkflowResponseDto
     public List<string> AvailableActions { get; set; } = [];
     public int? OrderId { get; set; }
     public string? OrderNumber { get; set; }
+    public List<OrderDto> PendingOrders { get; set; } = [];
+    public OrderDto? SelectedPendingOrder { get; set; }
+    public OrderDto? CompletedOrder { get; set; }
 }
 
 public sealed class OrderWorkflowCustomerDto

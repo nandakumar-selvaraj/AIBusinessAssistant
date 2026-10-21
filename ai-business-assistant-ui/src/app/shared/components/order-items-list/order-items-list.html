@@ -7,7 +7,7 @@
     <i class="bi bi-receipt text-primary fs-5" aria-hidden="true"></i>
   </div>
   <div class="order-stack">
-    @for (order of orders; track order.orderId) {
+    @for (order of ordersForDisplay; track order.orderId) {
       <article class="order-entry">
         <div class="order-summary">
           <button type="button" class="order-expand" [attr.aria-expanded]="expanded() === order.orderId" (click)="toggle(order.orderId)">

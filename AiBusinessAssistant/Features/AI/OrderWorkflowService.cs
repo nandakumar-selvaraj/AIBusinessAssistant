@@ -11,6 +11,7 @@ namespace AiBusinessAssistant.Features.AI;
 public interface IOrderWorkflowService
 {
     Task<OrderWorkflowResponseDto> StartAsync(int conversationId, CancellationToken cancellationToken);
+    Task<OrderWorkflowResponseDto> StartPendingCompletionAsync(int conversationId, CancellationToken cancellationToken);
     Task<OrderWorkflowResponseDto> HandleActionAsync(int conversationId, OrderWorkflowActionRequestDto request, CancellationToken cancellationToken);
     Task<OrderWorkflowResponseDto?> GetActiveAsync(int conversationId, CancellationToken cancellationToken);
 }
@@ -28,6 +29,9 @@ public sealed class OrderWorkflowService(
     private const string SelectingCustomer = "SelectingCustomer";
     private const string SelectingProducts = "SelectingProducts";
     private const string AwaitingConfirmation = "AwaitingConfirmation";
+    private const string ListingPendingOrders = "ListingPendingOrders";
+    private const string ReviewingPendingOrders = "ReviewingPendingOrders";
+    private const string AwaitingCompletionConfirmation = "AwaitingCompletionConfirmation";
     private const string Completed = "Completed";
     private const string Cancelled = "Cancelled";
 
@@ -37,6 +41,8 @@ public sealed class OrderWorkflowService(
         if (!conversationExists) throw new ApiNotFoundException($"Conversation {conversationId} was not found.");
 
         var workflow = await LoadAsync(conversationId, cancellationToken);
+        if (workflow is not null && IsPendingWorkflowActive(workflow))
+            return await BuildPendingResponseAsync(workflow, "Finish reviewing pending orders before starting another workflow.", cancellationToken);
         if (workflow is null)
         {
             workflow = new OrderWorkflow { ConversationId = conversationId };
@@ -61,6 +67,41 @@ public sealed class OrderWorkflowService(
         return await BuildResponseAsync(workflow, "Choose a customer to start the order.", cancellationToken);
     }
 
+    public async Task<OrderWorkflowResponseDto> StartPendingCompletionAsync(int conversationId, CancellationToken cancellationToken)
+    {
+        if (!await db.ChatConversations.AnyAsync(item => item.ConversationId == conversationId, cancellationToken))
+            throw new ApiNotFoundException($"Conversation {conversationId} was not found.");
+
+        var workflow = await LoadAsync(conversationId, cancellationToken);
+        if (workflow is not null && workflow.State is SelectingCustomer or SelectingProducts or AwaitingConfirmation)
+            return await BuildResponseAsync(workflow, "Finish the current order before reviewing pending orders.", cancellationToken);
+        if (workflow is not null && workflow.State == AwaitingCompletionConfirmation)
+            return await BuildPendingResponseAsync(workflow, "Confirm or cancel the selected order before choosing another.", cancellationToken);
+
+        if (workflow is null)
+        {
+            workflow = new OrderWorkflow { ConversationId = conversationId };
+            db.OrderWorkflows.Add(workflow);
+        }
+        else
+        {
+            workflow.CustomerId = null;
+            workflow.CreatedOrderId = null;
+            workflow.SelectedOrderId = null;
+            await ClearItemsAsync(workflow, cancellationToken);
+        }
+
+        workflow.State = ListingPendingOrders;
+        workflow.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+        workflow.State = ReviewingPendingOrders;
+        workflow.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+        var pending = await orders.GetPendingAsync(20);
+        var message = pending.Any() ? "Choose a pending order ID to review its details." : "There are no pending orders right now.";
+        return await BuildPendingResponseAsync(workflow, message, cancellationToken, pending);
+    }
+
     public async Task<OrderWorkflowResponseDto> HandleActionAsync(int conversationId, OrderWorkflowActionRequestDto request, CancellationToken cancellationToken)
     {
         await using var conversationLock = await locks.AcquireAsync(conversationId, cancellationToken);
@@ -77,6 +118,12 @@ public sealed class OrderWorkflowService(
             case "startplaceorder":
             case "start":
                 return await StartAsync(conversationId, cancellationToken);
+            case "showpendingorders":
+                return await StartPendingCompletionAsync(conversationId, cancellationToken);
+            case "selectpendingorder":
+                return await SelectPendingOrderAsync(workflow, request.OrderId, cancellationToken);
+            case "confirmcompletion":
+                return await ConfirmPendingOrderAsync(workflow, request.OrderId, cancellationToken);
             case "selectcustomer":
                 await SelectCustomerAsync(workflow, request.CustomerId, cancellationToken);
                 return await BuildResponseAsync(workflow, "Customer selected. Choose products and quantities.", cancellationToken);
@@ -92,6 +139,14 @@ public sealed class OrderWorkflowService(
             case "confirmorder":
                 return await ConfirmAsync(workflow, cancellationToken);
             case "cancelworkflow":
+                if (workflow.State == AwaitingCompletionConfirmation)
+                {
+                    workflow.State = Cancelled;
+                    workflow.SelectedOrderId = null;
+                    workflow.UpdatedAt = DateTime.UtcNow;
+                    await db.SaveChangesAsync(cancellationToken);
+                    return await BuildPendingResponseAsync(workflow, "Completion cancelled. The order was not changed.", cancellationToken);
+                }
                 EnsureState(workflow, SelectingCustomer, SelectingProducts, AwaitingConfirmation);
                 workflow.State = Cancelled;
                 workflow.UpdatedAt = DateTime.UtcNow;
@@ -108,6 +163,8 @@ public sealed class OrderWorkflowService(
             throw new ApiNotFoundException($"Conversation {conversationId} was not found.");
         var workflow = await LoadAsync(conversationId, cancellationToken);
         if (workflow is null || workflow.State is Idle or Completed or Cancelled) return null;
+        if (IsPendingWorkflowActive(workflow))
+            return await BuildPendingResponseAsync(workflow, "Continue reviewing pending orders below.", cancellationToken);
         return await BuildResponseAsync(workflow, "Continue using the order controls below.", cancellationToken);
     }
 
@@ -227,6 +284,113 @@ public sealed class OrderWorkflowService(
         return await BuildResponseAsync(workflow, $"Order placed successfully. Order #{order.OrderId}.", cancellationToken);
     }
 
+    private async Task<OrderWorkflowResponseDto> SelectPendingOrderAsync(OrderWorkflow workflow, int? orderId, CancellationToken cancellationToken)
+    {
+        EnsureState(workflow, ReviewingPendingOrders, Completed);
+        if (!orderId.HasValue || orderId.Value <= 0)
+            throw new ApiValidationException("Choose a valid pending order ID.");
+
+        var order = await orders.GetByIdAsync(orderId.Value);
+        if (order is null || !string.Equals(order.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+        {
+            workflow.SelectedOrderId = null;
+            workflow.State = ReviewingPendingOrders;
+            workflow.UpdatedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync(cancellationToken);
+            var message = order is null
+                ? $"Order {orderId.Value} was not found. The pending list has been refreshed."
+                : $"Order {orderId.Value} is no longer pending. The pending list has been refreshed.";
+            return await BuildPendingResponseAsync(workflow, message, cancellationToken);
+        }
+
+        workflow.SelectedOrderId = order.OrderId;
+        workflow.State = AwaitingCompletionConfirmation;
+        workflow.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+        return await BuildPendingResponseAsync(workflow, $"Review order {order.OrderId}, then confirm completion or cancel.", cancellationToken);
+    }
+
+    private async Task<OrderWorkflowResponseDto> ConfirmPendingOrderAsync(OrderWorkflow workflow, int? orderId, CancellationToken cancellationToken)
+    {
+        if (workflow.State == Completed && workflow.SelectedOrderId.HasValue && orderId == workflow.SelectedOrderId)
+            return await BuildPendingResponseAsync(workflow, $"Order {workflow.SelectedOrderId.Value} is already completed.", cancellationToken);
+
+        EnsureState(workflow, AwaitingCompletionConfirmation);
+        if (!workflow.SelectedOrderId.HasValue || !orderId.HasValue || workflow.SelectedOrderId.Value != orderId.Value)
+            throw new ApiConflictException("The confirmation does not match the order selected in this conversation.");
+
+        var currentOrder = await orders.GetByIdAsync(workflow.SelectedOrderId.Value);
+        if (currentOrder is null || !string.Equals(currentOrder.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+        {
+            workflow.SelectedOrderId = null;
+            workflow.State = ReviewingPendingOrders;
+            workflow.UpdatedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync(cancellationToken);
+            return await BuildPendingResponseAsync(workflow,
+                currentOrder is null ? "The selected order no longer exists. The pending list has been refreshed." : "The selected order is no longer pending. The pending list has been refreshed.",
+                cancellationToken);
+        }
+
+        var completedOrder = await orders.CompletePendingAsync(workflow.SelectedOrderId.Value);
+        if (completedOrder is null)
+        {
+            workflow.SelectedOrderId = null;
+            workflow.State = ReviewingPendingOrders;
+            workflow.UpdatedAt = DateTime.UtcNow;
+            await db.SaveChangesAsync(cancellationToken);
+            return await BuildPendingResponseAsync(workflow, "The order changed before it could be completed. The pending list has been refreshed.", cancellationToken);
+        }
+
+        workflow.State = Completed;
+        workflow.UpdatedAt = DateTime.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+        var remaining = await orders.GetPendingAsync(20);
+        var message = remaining.Any()
+            ? $"Order {completedOrder.OrderId} is now {completedOrder.Status}. Select another pending order ID if needed."
+            : $"Order {completedOrder.OrderId} is now {completedOrder.Status}. No pending orders remain.";
+        return await BuildPendingResponseAsync(workflow, message, cancellationToken, remaining, completedOrder);
+    }
+
+    private async Task<OrderWorkflowResponseDto> BuildPendingResponseAsync(
+        OrderWorkflow workflow,
+        string message,
+        CancellationToken cancellationToken,
+        IEnumerable<OrderDto>? pendingOrders = null,
+        OrderDto? completedOrder = null)
+    {
+        var orderList = (pendingOrders ?? await orders.GetPendingAsync(20)).ToList();
+        OrderDto? selectedOrder = null;
+        if (workflow.SelectedOrderId.HasValue)
+        {
+            selectedOrder = await orders.GetByIdAsync(workflow.SelectedOrderId.Value);
+            if (workflow.State == Completed)
+            {
+                completedOrder ??= selectedOrder;
+                selectedOrder = null;
+            }
+        }
+
+        return new OrderWorkflowResponseDto
+        {
+            ConversationId = workflow.ConversationId,
+            WorkflowKind = "PendingOrderCompletion",
+            State = workflow.State,
+            AssistantMessage = message,
+            PendingOrders = orderList.ToList(),
+            SelectedPendingOrder = selectedOrder,
+            CompletedOrder = completedOrder,
+            AvailableActions = workflow.State switch
+            {
+                ListingPendingOrders => ["ShowPendingOrders"],
+                ReviewingPendingOrders => ["SelectPendingOrder", "ShowPendingOrders"],
+                AwaitingCompletionConfirmation => ["ConfirmCompletion", "CancelWorkflow"],
+                Completed => ["SelectPendingOrder", "ShowPendingOrders"],
+                Cancelled => ["ShowPendingOrders"],
+                _ => []
+            }
+        };
+    }
+
     private async Task<OrderWorkflowResponseDto> BuildResponseAsync(OrderWorkflow workflow, string message, CancellationToken cancellationToken)
     {
         var persistedOrder = workflow.CreatedOrderId.HasValue
@@ -312,6 +476,9 @@ public sealed class OrderWorkflowService(
         if (!allowed.Contains(workflow.State, StringComparer.Ordinal))
             throw new ApiConflictException($"This action is not valid while the order workflow is {workflow.State}.");
     }
+
+    private static bool IsPendingWorkflowActive(OrderWorkflow workflow) =>
+        workflow.State is ListingPendingOrders or ReviewingPendingOrders or AwaitingCompletionConfirmation;
 
     private async Task<string> CreateOrderNumberAsync(int conversationId, CancellationToken cancellationToken)
     {

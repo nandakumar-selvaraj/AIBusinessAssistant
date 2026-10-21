@@ -192,6 +192,18 @@ namespace AiBusinessAssistant.Repositories.Implementations
             await _context.SaveChangesAsync();
         }
 
+        public async Task<bool> TryCompletePendingAsync(int id)
+        {
+            var updatedRows = await _context.Orders
+                .Where(order => order.OrderId == id && order.Status == "Pending")
+                .ExecuteUpdateAsync(update => update.SetProperty(order => order.Status, "Completed"));
+            if (updatedRows == 0) return false;
+
+            var trackedOrder = _context.Orders.Local.FirstOrDefault(order => order.OrderId == id);
+            if (trackedOrder is not null) trackedOrder.Status = "Completed";
+            return true;
+        }
+
         public async Task DeleteAsync(int id)
         {
             var order = await _context.Orders

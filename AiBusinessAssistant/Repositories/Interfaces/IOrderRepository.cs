@@ -14,6 +14,7 @@ namespace AiBusinessAssistant.Repositories.Interfaces
         Task<Order> AddAsync(Order order);
         Task UpdateAsync(Order order);
         Task UpdateStatusAsync(int id, string status);
+        Task<bool> TryCompletePendingAsync(int id);
         Task DeleteAsync(int id);
     }
 }

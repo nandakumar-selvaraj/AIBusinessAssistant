@@ -7,4 +7,5 @@ public sealed class ChatResponseDto
     public string AssistantMessage { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public OrderWorkflowResponseDto? OrderWorkflow { get; set; }
+    public OrderWorkflowResponseDto? PendingOrderWorkflow { get; set; }
 }

@@ -13,6 +13,7 @@ namespace AiBusinessAssistant.Services.Interfaces
         Task<OrderDto?> GetByIdAsync(int id);
         Task<OrderDto> CreateAsync(CreateOrderDto dto);
         Task<OrderDto> CompleteAsync(int id);
+        Task<OrderDto?> CompletePendingAsync(int id);
         Task DeleteAsync(int id);
     }
 }

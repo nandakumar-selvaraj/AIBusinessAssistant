@@ -129,6 +129,13 @@ namespace AiBusinessAssistant.Services.Implementations
             return MapToDto(order);
         }
 
+        public async Task<OrderDto?> CompletePendingAsync(int id)
+        {
+            if (!await _orderRepository.TryCompletePendingAsync(id)) return null;
+            var updated = await _orderRepository.GetByIdAsync(id);
+            return updated is null ? null : MapToDto(updated);
+        }
+
         public async Task DeleteAsync(int id) => await _orderRepository.DeleteAsync(id);
 
         private static OrderDto MapToDto(Order o)

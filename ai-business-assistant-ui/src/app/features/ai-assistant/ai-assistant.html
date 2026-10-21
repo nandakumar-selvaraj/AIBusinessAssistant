@@ -47,6 +47,59 @@
             <div class="message-bubble assistant-bubble response-card">
               @if (message.orderWorkflow; as workflow) {
                 <p class="mb-3">{{ workflow.assistantMessage }}</p>
+                @if (workflow.workflowKind === 'PendingOrderCompletion') {
+                  @if (workflow.completedOrder; as completed) {
+                    <div class="alert alert-success py-2" role="status">Order #{{ completed.orderId }} ({{ completed.orderNumber }}) is now {{ completed.status }}.</div>
+                  }
+                  @if (workflow.state === 'AwaitingCompletionConfirmation' && workflow.selectedPendingOrder; as selected) {
+                    <section class="workflow-summary mt-3" aria-label="Selected pending order">
+                      <h3 class="h6 fw-bold">Complete order #{{ selected.orderId }} · {{ selected.orderNumber }}</h3>
+                      <div class="small text-secondary mb-2">{{ selected.customerName }} · {{ selected.orderDate | date:'mediumDate' }} · {{ selected.status }}</div>
+                      @for (item of selected.orderItems; track $index) {
+                        <div class="workflow-summary-row">
+                          <div class="min-w-0"><strong>{{ item.productName }}</strong></div>
+                          <span class="workflow-readonly-quantity">Qty {{ item.quantity }}</span>
+                          <span class="small text-secondary">{{ item.unitPrice | currency }} each · {{ item.lineTotal | currency }}</span>
+                        </div>
+                      }
+                      <div class="d-flex justify-content-between border-top pt-2 mt-2 fw-bold"><span>Total</span><span>{{ selected.totalAmount | currency }}</span></div>
+                      <div class="d-flex flex-wrap gap-2 mt-3">
+                        <button type="button" class="btn btn-success btn-sm" [disabled]="sending()" (click)="confirmCompletion(workflow)">Confirm completion</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" [disabled]="sending()" (click)="cancelCompletion()">Cancel</button>
+                      </div>
+                    </section>
+                  }
+                  @if (workflow.state !== 'AwaitingCompletionConfirmation') {
+                    @if (workflow.pendingOrders.length) {
+                      <section class="pending-order-list" aria-label="Pending orders">
+                        @for (order of workflow.pendingOrders; track order.orderId) {
+                          <article class="pending-order-card">
+                            <div class="pending-order-heading">
+                              <button type="button" class="btn btn-link btn-sm p-0 fw-bold" [disabled]="sending()" (click)="selectPendingOrder(order.orderId)" [attr.aria-label]="'Select order ' + order.orderId">Order #{{ order.orderId }}</button>
+                              <span class="small text-secondary">{{ order.orderNumber }} · {{ order.status }}</span>
+                              <span class="ms-auto fw-semibold">{{ order.totalAmount | currency }}</span>
+                            </div>
+                            <div class="small text-secondary">{{ order.customerName }} · {{ order.orderDate | date:'mediumDate' }}</div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm mt-2" (click)="togglePendingOrder(order.orderId)" [attr.aria-expanded]="!!expandedPendingOrders[order.orderId]" [attr.aria-controls]="'pending-items-' + order.orderId">
+                              <i class="bi" [class.bi-chevron-down]="!expandedPendingOrders[order.orderId]" [class.bi-chevron-up]="expandedPendingOrders[order.orderId]" aria-hidden="true"></i>
+                              {{ expandedPendingOrders[order.orderId] ? 'Hide items' : 'Show items (' + order.orderItems.length + ')' }}
+                            </button>
+                            @if (expandedPendingOrders[order.orderId]) {
+                              <div class="pending-order-items mt-2" [id]="'pending-items-' + order.orderId">
+                                @for (item of order.orderItems; track $index) {
+                                  <div class="pending-order-item"><span>{{ item.productName }} × {{ item.quantity }}</span><span class="text-secondary">{{ item.unitPrice | currency }} · {{ item.lineTotal | currency }}</span></div>
+                                } @empty { <p class="small text-secondary mb-0">No item details are available.</p> }
+                              </div>
+                            }
+                          </article>
+                        }
+                      </section>
+                    } @else {
+                      <p class="small text-secondary mb-0">No pending orders are available.</p>
+                    }
+                    <button type="button" class="btn btn-outline-primary btn-sm mt-3" [disabled]="sending()" (click)="refreshPendingOrders()">Refresh pending orders</button>
+                  }
+                } @else {
                 @if (workflow.state === 'SelectingCustomer') {
                   <div class="d-flex flex-wrap gap-2" aria-label="Choose customer">
                     @for (customer of workflow.availableCustomers; track customer.customerId) {
@@ -102,6 +155,7 @@
                 }
                 @if (workflow.state === 'Cancelled') {
                   <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="sending()" (click)="startAnotherOrder()">Start a new order</button>
+                }
                 }
               } @else if (message.products) {
                 <section class="bai-card assistant-products-card">
