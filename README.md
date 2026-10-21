@@ -211,32 +211,6 @@ The API exposes endpoints for the following operations:
 
 All API routes are under the `/api` prefix. For the exact endpoint methods and routes, see the [API README](AiBusinessAssistant/README.md) or Swagger UI.
 
-## Build and Test
-
-### Backend
-
-From `AiBusinessAssistant/`:
-
-```bash
-dotnet build
-```
-
-### Frontend
-
-From `ai-business-assistant-ui/`:
-
-```bash
-npm run build
-```
-
-Run the frontend unit tests with:
-
-```bash
-npm test -- --watch=false
-```
-
-The frontend test runner uses Vitest with jsdom. Run the commands above in your development environment to verify the current build and test status.
-
 ## Architecture Overview
 
 ```text
